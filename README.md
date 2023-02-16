@@ -1,5 +1,5 @@
 # Issie - an Interactive Schematic Simulator with Integrated Editor
-
+hi
 Issie (Interactive Schematic Simulator with Integrated Editor) is an application for digital circuit design and simulation. It is targeted at students and hobbyists that want to get a grasp of Digital Electronics concepts in a simple and fun way. Issie is designed to be beginner-friendly and guide the users toward their goals via clear error messages and visual clues. Issie is developed and actively used in teaching at Imperial College London.
 
 * If you are just interested in using the application, jump to the [Getting Started](#getting-started) section. 
@@ -7,7 +7,7 @@ Issie (Interactive Schematic Simulator with Integrated Editor) is an application
 
 For more technical info about the project, read on. This documentation is partly based on the excellent [VisUAL2](https://github.com/ImperialCollegeLondon/Visual2) documentation, given the similarity in the technology stack used.
 
-## Introduction
+## Introduction 
 
 For the Issie website go [here](https://tomcl.github.io/issie/).
 
