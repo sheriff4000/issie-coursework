@@ -102,3 +102,11 @@ let updateModelWires
     |> Optic.map wires_ (fun wireMap  ->
         (wireMap,wiresToAdd)
         ||> List.fold (fun wireMap wireToAdd -> Map.add wireToAdd.WId wireToAdd wireMap))
+
+//HLP23: Sherif
+//This function simply takes a model and extracts the map of <ComponentId, Symbol> in a usable form,
+//I am using it to determine the total space occupied by the components
+
+let getComponentInfo (model:Model) =
+    model.Symbol.Symbols
+    |> Map.map (fun id symbol -> symbol.Component)
