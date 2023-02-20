@@ -20,6 +20,7 @@ open Operators
     functions for this purpose.
 *)
 
+
 /// To test this, it must be given two symbols interconnected by wires. It then reorders the ports on
 /// symbolToOrder so that the connecting wires do not cross.
 /// Tt should work out the interconnecting wires (wiresToOrder) from 
@@ -32,9 +33,14 @@ let reOrderPorts
         : BusWireT.Model =
     printfn $"ReorderPorts: ToOrder:{symbolToOrder.Component.Label}, Other:{otherSymbol.Component.Label}"
     let sModel = wModel.Symbol
-
+    
+    printfn $"Wire List:{(SmartHelpers.allWires wModel).Length}"
+    
+    printfn $"Connected wires: {SmartHelpers.connectingWires symbolToOrder otherSymbol wModel}"
+    
+    
     let wiresToOrder = [] // replace this with correct wires
-
+    
     let symbol' = symbolToOrder // no change at the moment
     // HLP23: This could be cleaned up using Optics - see SmartHelpers for examples
     {wModel with 
