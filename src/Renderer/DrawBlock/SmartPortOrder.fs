@@ -33,40 +33,10 @@ let reOrderPorts
         : BusWireT.Model =
     printfn $"ReorderPorts: ToOrder:{symbolToOrder.Component.Label}, Other:{otherSymbol.Component.Label}"
     let sModel = wModel.Symbol
-    let getWire (connectID, wire: 'b)=
-        wire
-
-    let allWires = 
-        Map.toList wModel.Wires
-        |> List.map getWire
-    printfn $"Wire List:{allWires.Length}"
-    let getInputPort wire = 
-        wire.InputPort
     
-    let getOutputPort wire =   
-        wire.OutputPort
+    printfn $"Wire List:{(SmartHelpers.allWires wModel).Length}"
     
-    
-    
-    
-    let connectingWires =
-        let isPresent (symbol1:Symbol) (symbol2:Symbol) (wire)=
-            if Map.tryFind (string wire.InputPort) symbol1.PortMaps.Orientation <> None
-            then 
-                if Map.tryFind (string wire.OutputPort) symbol2.PortMaps.Orientation <> None
-                then Some (wire, (string wire.InputPort), (string wire.OutputPort))
-                else None
-            else 
-                if Map.tryFind (string wire.OutputPort) symbol1.PortMaps.Orientation <> None
-                then 
-                    if Map.tryFind (string wire.InputPort) symbol2.PortMaps.Orientation <> None
-                    then Some(wire, (string wire.OutputPort), (string wire.InputPort))
-                    else None
-                else None
-        
-        List.map (isPresent symbolToOrder otherSymbol) allWires
-        |> List.filter (fun f -> f <> None) //removes None entries from list
-    printfn $"Connected wires: {connectingWires}"
+    printfn $"Connected wires: {SmartHelpers.connectingWires symbolToOrder otherSymbol wModel}"
     
     
     let wiresToOrder = [] // replace this with correct wires
