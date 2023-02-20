@@ -20,6 +20,7 @@ open Operators
     functions for this purpose.
 *)
 
+
 /// To test this, it must be given two symbols interconnected by wires. It then reorders the ports on
 /// symbolToOrder so that the connecting wires do not cross.
 /// Tt should work out the interconnecting wires (wiresToOrder) from 
@@ -32,9 +33,44 @@ let reOrderPorts
         : BusWireT.Model =
     printfn $"ReorderPorts: ToOrder:{symbolToOrder.Component.Label}, Other:{otherSymbol.Component.Label}"
     let sModel = wModel.Symbol
+    let getWire (connectID, wire: 'b)=
+        wire
 
+    let allWires = 
+        Map.toList wModel.Wires
+        |> List.map getWire
+    printfn $"Wire List:{allWires.Length}"
+    let getInputPort wire = 
+        wire.InputPort
+    
+    let getOutputPort wire =   
+        wire.OutputPort
+    
+    
+    
+    
+    let connectingWires =
+        let isPresent (symbol1:Symbol) (symbol2:Symbol) (wire)=
+            if Map.tryFind (string wire.InputPort) symbol1.PortMaps.Orientation <> None
+            then 
+                if Map.tryFind (string wire.OutputPort) symbol2.PortMaps.Orientation <> None
+                then Some (wire, (string wire.InputPort), (string wire.OutputPort))
+                else None
+            else 
+                if Map.tryFind (string wire.OutputPort) symbol1.PortMaps.Orientation <> None
+                then 
+                    if Map.tryFind (string wire.InputPort) symbol2.PortMaps.Orientation <> None
+                    then Some(wire, (string wire.OutputPort), (string wire.InputPort))
+                    else None
+                else None
+        
+        List.map (isPresent symbolToOrder otherSymbol) allWires
+        |> List.filter (fun f -> f <> None) //removes None entries from list
+    printfn $"Connected wires: {connectingWires}"
+    
+    
     let wiresToOrder = [] // replace this with correct wires
-
+    
     let symbol' = symbolToOrder // no change at the moment
     // HLP23: This could be cleaned up using Optics - see SmartHelpers for examples
     {wModel with 
