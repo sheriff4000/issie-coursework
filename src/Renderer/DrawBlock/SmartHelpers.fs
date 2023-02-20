@@ -123,6 +123,7 @@ let allWires (model: BusWireT.Model) =
 //This function find all the wires connected between two symbols
 //This function returns a list of 3 part tuples
 //containing the wire, the connected port ID for the first symbol, and the connected port ID for the second symbol
+
 let connectingWires (symbol1:Symbol) (symbol2:Symbol) (model:Model)=
         let isConnected (wire)=
             if Map.tryFind (string wire.InputPort) symbol1.PortMaps.Orientation <> None
@@ -134,9 +135,13 @@ let connectingWires (symbol1:Symbol) (symbol2:Symbol) (model:Model)=
                 if Map.tryFind (string wire.OutputPort) symbol1.PortMaps.Orientation <> None
                 then 
                     if Map.tryFind (string wire.InputPort) symbol2.PortMaps.Orientation <> None
-                    then Some(wire, (string wire.OutputPort), (string wire.InputPort))
+                    then Some (wire, (string wire.OutputPort), (string wire.InputPort))
                     else None
                 else None
-        
+        let removeOption =
+            function
+            |Some x -> x
+            |None -> failwithf "can't happen"
         List.map (isConnected) (allWires model)
         |> List.filter (fun f -> f <> None) //removes None entries from list
+        |> List.map removeOption

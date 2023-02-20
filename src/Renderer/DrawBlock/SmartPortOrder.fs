@@ -36,10 +36,20 @@ let reOrderPorts
     
     printfn $"Wire List:{(SmartHelpers.allWires wModel).Length}"
     
-    printfn $"Connected wires: {SmartHelpers.connectingWires symbolToOrder otherSymbol wModel}"
+   // printfn $"Connected wires: {SmartHelpers.connectingWires symbolToOrder otherSymbol wModel}"
+
     
+
+    let connectWires = SmartHelpers.connectingWires symbolToOrder otherSymbol wModel
+    let firstElement (first,second,third) = 
+        first
     
-    let wiresToOrder = [] // replace this with correct wires
+
+        
+
+    let wiresToOrder =List.map firstElement connectWires
+    printfn $"Connected wires: {wiresToOrder}"
+    //List.map firstElement (SmartHelpers.connectingWires symbolToOrder otherSymbol wModel)// replace this with correct wires
     
     let symbol' = symbolToOrder // no change at the moment
     // HLP23: This could be cleaned up using Optics - see SmartHelpers for examples
