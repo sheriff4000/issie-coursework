@@ -113,39 +113,20 @@ let moveWires (wires: Map<ConnectionId, Wire>) (wireSpacings: list<float>) (ids:
 
 
 
-///
-/// HLP23: suggested initial smartChannel top-level function
-/// to be tested, it must be given a channel in through which to route wires nicely
-/// Normally the channel will come from symbol edges.
-/// The function must identify all wires with segments going through the channel and space them
-/// This function routes the middle segment of all 7 segment wires by moving them perpendicular to its direction.
-/// It is expected that all wires provided are 7 segment with middle segment in the same direction
-/// wires not so will be ignored.
-/// The messiness of when to call it, what to do with different types of wire, which wires to call it with
-/// could be left till later.
-/// For this simple routing only one dimension of the channel is needed (determined by orientation).
-/// The Wires going through the channel must be returned as an updated Wires map in model.
-// HLP23: need to update XML doc comments when this function is fully worked out.
-
-
 let smartChannelRoute //spaces wires evenly 
         (channelOrientation: Orientation) 
         (channel: BoundingBox) 
         (model:Model) 
             :Model =
-    //steps:
-    //1. check which wires are within the box
-        //functions needed: checkWireInChannel: checks if the vertical segment of wire goes through the channel
-                            //getWiresInChannel: returns all the wires in the Channel
-    //2. find order in which to have the wires, based on min and max place the wires can be
-        //functions needed: orderWires: orders the wires (based on where their vertical segment will be, left to right)
-    //3. try to space the wires evenly
-        //functions needed: wireSpacer: decides where the vertical segment of each wire will be
-        //                  moveWires: actually moves each wire so that it's spaced (moves as close as possible if not possible)
-    //4. if can't: maximimse the minimum distance and get close to even spacing
-        //functions needed: also wireSpacer and wireMover
-    //5. extend to also do horizontal (in an elegant way)
-    //6. extend to deal with hard cases
+    //new steps:
+    // 1. check which wires go through the channel
+    // 2. straighten the wires so that any wires a vertical section within the channel have the vertical section outside the channel
+    // 3. create an order for the wires
+    // 4. create a list of the height each wire should be
+    // 5. move the wires so that they are that height
+    // 6. test and make sure vertical is fully implemented
+    // 7. think about corner cases for both vertical and horizontal and try and make more complex
+
     let tr = channel.TopLeft
 
     //printfn $"SmartChannel: channel {channelOrientation}:(%.1f{tl.X},%.1f{tl.Y}) W=%.1f{channel.W} H=%.1f{channel.H}"
@@ -164,5 +145,3 @@ let smartChannelRoute //spaces wires evenly
     print right
     print wireSpacings
     {model with Wires = moveWires model.Wires wireSpacings sortedIdsInChannel}
-    
-
