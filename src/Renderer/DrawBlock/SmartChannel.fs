@@ -20,6 +20,9 @@ open Operators
     Normally it will update multiple wires in the BusWire model so could use the SmartHelper function for
     this purpose.
 *)
+
+type MovementDirection = Left | Right
+
 let print x = 
     printfn "%A" x
 
@@ -50,7 +53,7 @@ let checkWireInChannel (channel: BoundingBox) (wire: Wire) = // checks if a wire
     let wireTopY, wireBottomY = getYOfVerticalSegmentWire wire
     let validY = (wireTopY < bottom) && (wireBottomY > top)
     //check if the whole wire segment is valid
-    (validX && validY)
+    (validX && validY && ((List.length wire.Segments) = 7 ))
     
 let getWiresInChannel (wires: Map<ConnectionId, Wire>) (channel: BoundingBox) = //returns list of ID's of all wires in the channel 
     (Map.toList wires) 
@@ -77,42 +80,36 @@ let wireSpacer (channel: BoundingBox) (ids: list<ConnectionId>) =
     let numberOfWires = float (List.length ids)
     [1.0..numberOfWires] |> List.map (fun x -> channel.TopLeft.X - channel.W + ((channel.W / (numberOfWires + 1.0 )) * x))
 
-// // YOURE WORKING ON SHIT BELOW HERE
-// let moveVerticalSegment (segments: List<Segment>) (amount: float) = 
-//     let moveLeft (segments: List<Segment>) (amount: float) = 
-// //moves middle segment to the left for negative amount and to the right for positive amount
-//     let totalAvailableLength = segments[2].Length + segments[4].Length
-//     let left_or_right = amount > 0
+// YOURE WORKING ON SHIT BELOW HERE
+
+let moveVerticalSegment (segments: List<Segment>) (amount: float) (direction: MovementDirection) = 
+    //moves middle segment to the left for negative amount and to the right for positive amount
+    let totalAvailableLength = segments[2].Length + segments[4].Length
+    let possibleRightLength = max 0.0 (segments[4].Length - amount)
+    let possibleLeftLength = max 0.0 (segments[2].Length - amount)
+    match direction with
+    | Left -> segments |> List.mapi (fun i x -> if i = 2 then {x with Length=possibleLeftLength} else if i = 4 then {x with Length=totalAvailableLength - possibleLeftLength} else x)
+    | Right -> segments |> List.mapi (fun i x -> if i = 2 then {x with Length=totalAvailableLength - possibleRightLength} else if i = 4 then {x with Length=possibleRightLength} else x)
     
-
-
-// let moveWire (xCoordinate: float) (wire: Wire) = //moves middle segment of wire so that it is either the xcoordinate or as close as possible to it
-//     let minPossibleX = wire.StartPos.X + wire.Segments[0].Length
-//     let maxPossibleX = minPossibleX + wire.Segments[2].Length + wire.Segments[4].Length
-//     match xCoordinate with
-//     | xCoordinate when xCoordinate < minPossibleX -> 
-        
-//     | xCoordinate when xCoordinate > maxPossibleX -> 
-
-// let moveWires (channel: BoundingBox) (ids: list<ConnectionId>) (wires: Map<ConnectionId, Wire>) = 
-//     // returns new wires array in which wires are moved to try and be evenly spaced.
-
-// //YOURE WORKING ON SHIT ABOVE HERE
-
-
-    //let spaceVerticalWires (wires: Wire list) (leftSide: float) (width: float) = 
+let moveWire (xCoordinate: float) (wire: Wire) = //moves middle segment of wire so that it is either the xcoordinate or as close as possible to it
+    let verticalSegmentX = getXOfVerticalSegmentWire wire
+    let amount = xCoordinate - verticalSegmentX
+    match amount with
+    | x when x < 0 -> {wire with Segments = moveVerticalSegment wire.Segments (-x) Left}
+    | x when x > 0 -> {wire with Segments = moveVerticalSegment wire.Segments x Right}
+    | _ -> wire
     
-    // let numberOfWires = float (List.length wires)
-    // let wirePercentageLocations = [1.0..numberOfWires] |> List.map (fun x ->  (100.0 / (numberOfWires + 1.0 )) * x)
-    // let setWireHorizontalLength (leftSegmentLengthPercent: float) (wire: Wire) =  
-    //     let segments = wire.Segments
-    //     let totalHorizontalLength = segments[2].Length + segments[4].Length
-    //     let newLeftSegmentLength = totalHorizontalLength * leftSegmentLengthPercent * 0.01
-    //     let newRightSegmentLength = totalHorizontalLength - newLeftSegmentLength
-    //     let newSegments = segments |> List.mapi (fun i x -> if i = 2 then {x with Length=newLeftSegmentLength} else if i = 4 then {x with Length=newRightSegmentLength} else x) 
-    //     {wire with Segments = newSegments}
-    // let partials = wirePercentageLocations |> List.map (fun x -> setWireHorizontalLength x )
-    // wires |> List.mapi (fun i x -> partials[i] x)
+let moveWires (wires: Map<ConnectionId, Wire>) (wireSpacings: list<float>) (ids: list<ConnectionId>)  = 
+    let combined = List.zip wireSpacings ids
+    let updateWires (wires: Map<ConnectionId, Wire>) (wireSpacing, id)  = 
+        let wire = Map.find id wires
+        let updatedWire = moveWire wireSpacing wire
+        wires |> Map.add id updatedWire
+
+    combined |> List.fold (updateWires) wires
+    
+//YOURE WORKING ON SHIT ABOVE HERE
+
 
 
 
@@ -150,12 +147,22 @@ let smartChannelRoute //spaces wires evenly
     //5. extend to also do horizontal (in an elegant way)
     //6. extend to deal with hard cases
     let tr = channel.TopLeft
-   
-    //printfn $"SmartChannel: channel {channelOrientation}:(%.1f{tl.X},%.1f{tl.Y}) W=%.1f{channel.W} H=%.1f{channel.H}"
-    let wiresInChannel = getWiresInChannel model.Wires channel
 
+    //printfn $"SmartChannel: channel {channelOrientation}:(%.1f{tl.X},%.1f{tl.Y}) W=%.1f{channel.W} H=%.1f{channel.H}"
+    let wireIdsInChannel = getWiresInChannel model.Wires channel
     print "number of wires in general: "
     print (List.length (Map.toList model.Wires))
     print "number of wires in channel:"
-    print (List.length wiresInChannel)
-    model
+    print (List.length wireIdsInChannel)
+    let sortedIdsInChannel = orderWires model.Wires wireIdsInChannel
+    let wireSpacings = wireSpacer channel sortedIdsInChannel
+    let left = channel.TopLeft.X - channel.W
+    let right = channel.TopLeft.X
+    print "left, "
+    print left
+    print "right, "
+    print right
+    print wireSpacings
+    {model with Wires = moveWires model.Wires wireSpacings sortedIdsInChannel}
+    
+
