@@ -108,7 +108,7 @@ let SegBoxIntersect (box: boxAsLines) (line: LineSeg) =
     if Option.isSome topIntersect && Option.isSome botIntersect then
         (Top, topIntersect)
     else 
-        if Option.isSome leftIntersect & Option.isSome rightIntersect then
+        if Option.isSome leftIntersect && Option.isSome rightIntersect then
             (Left, leftIntersect)
         else
             (Top, None)
