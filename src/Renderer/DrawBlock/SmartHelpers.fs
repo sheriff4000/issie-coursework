@@ -110,3 +110,10 @@ let updateModelWires
 let getComponentInfo (model:Model) =
     model.Symbol.Symbols
     |> Map.map (fun id symbol -> symbol.Component)
+
+let rec listDifference (newList: 'a list) (oldList: 'a list) = 
+        match oldList with 
+            | el::tl -> 
+                let outList = List.except (seq {el}) newList
+                listDifference outList tl
+            | [] -> newList
