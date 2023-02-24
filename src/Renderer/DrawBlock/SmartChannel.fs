@@ -80,7 +80,7 @@ let wireSpacer (channel: BoundingBox) (ids: list<ConnectionId>) =
     let numberOfWires = float (List.length ids)
     [1.0..numberOfWires] |> List.map (fun x -> channel.TopLeft.X - channel.W + ((channel.W / (numberOfWires + 1.0 )) * x))
 
-// YOURE WORKING ON SHIT BELOW HERE
+
 
 let moveVerticalSegment (segments: List<Segment>) (amount: float) (direction: MovementDirection) = 
     //moves middle segment to the left for negative amount and to the right for positive amount
@@ -108,7 +108,7 @@ let moveWires (wires: Map<ConnectionId, Wire>) (wireSpacings: list<float>) (ids:
 
     combined |> List.fold (updateWires) wires
     
-//YOURE WORKING ON SHIT ABOVE HERE
+
 
 
 
