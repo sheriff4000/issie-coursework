@@ -1,4 +1,4 @@
-﻿module SmartHelpers
+module SmartHelpers
 open CommonTypes
 open DrawHelpers
 open DrawModelType
@@ -110,6 +110,66 @@ let updateModelWires
 let getComponentInfo (model:Model) =
     model.Symbol.Symbols
     |> Map.map (fun id symbol -> symbol.Component)
+
+
+// HLP23: Luke
+// This function returns a list of the IDs of all the input ports of a symbol
+let getInputPortIds
+    (symbol: Symbol)
+    : string list =
+    List.map (fun (x:Port) -> x.Id) symbol.Component.InputPorts
+
+// HLP23: Luke
+// This function returns whether a wire is inputted into a symbol
+let isSymbolInputForWire
+    (symbol: Symbol)
+    (wire: Wire)
+    : bool =
+    symbol
+    |> getInputPortIds
+    |> List.contains (string wire.InputPort)
+
+// HLP23: Luke
+// This function get the minimum distance between horizontal ports of a symbol
+let getPortDistancesH
+    (symbol: Symbol)
+    : float =
+    let maxPortNumber =
+        symbol.PortMaps.Order
+        |> Map.filter (fun x _ -> x = Top || x = Bottom)
+        |> Map.toList
+        |> List.map (fun (_,y) -> y.Length)
+        |> List.max
+    
+    (symbol.Component.W * (Option.get symbol.HScale)) / float (maxPortNumber+1)
+
+// HLP23: Luke
+// This function returns the port number counting from left to right and its edge
+let getPortPositionFromLeft
+    (symbol: Symbol)
+    (portId: string)
+    : (Edge*int) option =
+    let edge = 
+        symbol.PortMaps.Order
+        |> Map.toList
+        |> List.filter (fun (_,lst) -> List.contains portId lst)
+    
+    if edge.Length > 0
+    then 
+        let index =
+            edge[0]
+            |> snd
+            |> List.findIndex (fun x -> 
+                printfn "id %A %A" x portId
+                x=portId)
+        let edgeName = fst edge[0]
+
+        if edgeName = Top
+        then Some (fst edge[0], (snd edge[0]).Length - 1 - index)
+        else Some (fst edge[0], index)
+        
+    else None
+
 
 //HLP23: AUTHOR Ewan
 //This function returns a list of all the wires in the model
