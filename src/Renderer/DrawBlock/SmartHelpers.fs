@@ -1,4 +1,4 @@
-﻿module SmartHelpers
+module SmartHelpers
 open CommonTypes
 open DrawHelpers
 open DrawModelType
@@ -112,7 +112,6 @@ let getComponentInfo (model:Model) =
     |> Map.map (fun id symbol -> symbol.Component)
 
 
-
 // HLP23: Luke
 // This function returns a list of the IDs of all the input ports of a symbol
 let getInputPortIds
@@ -170,3 +169,39 @@ let getPortPositionFromLeft
         else Some (fst edge[0], index)
         
     else None
+
+
+//HLP23: AUTHOR Ewan
+//This function returns a list of all the wires in the model
+let allWires (model: BusWireT.Model) = 
+        let getWire (connectID, wire: 'b)=
+            wire
+        Map.toList model.Wires
+        |> List.map snd
+
+//HLP23: AUTHOR Ewan
+//This function find all the wires connected between two symbols
+//This function returns a list of 3 part tuples
+//containing the wire, the connected port ID for the first symbol, and the connected port ID for the second symbol
+
+let connectingWires (symbol1:Symbol) (symbol2:Symbol) (model:Model)=
+        let isConnected (wire)=
+            if Map.tryFind (string wire.InputPort) symbol1.PortMaps.Orientation <> None
+            then 
+                if Map.tryFind (string wire.OutputPort) symbol2.PortMaps.Orientation <> None
+                then Some (wire, (string wire.InputPort), (string wire.OutputPort))
+                else None
+            else 
+                if Map.tryFind (string wire.OutputPort) symbol1.PortMaps.Orientation <> None
+                then 
+                    if Map.tryFind (string wire.InputPort) symbol2.PortMaps.Orientation <> None
+                    then Some (wire, (string wire.OutputPort), (string wire.InputPort))
+                    else None
+                else None
+        let removeOption =
+            function
+            |Some x -> x
+            |None -> failwithf "can't happen"
+        List.map (isConnected) (allWires model)
+        |> List.filter (fun f -> f <> None) //removes None entries from list
+        |> List.map removeOption
