@@ -109,6 +109,14 @@ let SegBoxIntersect (box: boxAsLines) (line: LineSeg) =
         (Top, topIntersect)
     elif Option.isSome leftIntersect && Option.isSome rightIntersect then
         (Left, leftIntersect)
+    elif Option.isSome topIntersect && Option.isSome leftIntersect then
+        (Top, topIntersect)
+    elif Option.isSome botIntersect && Option.isSome rightIntersect then
+        (Bottom, botIntersect)
+    elif Option.isSome topIntersect && Option.isSome rightIntersect then
+        (Top, topIntersect)
+    elif Option.isSome botIntersect && Option.isSome leftIntersect then
+        (Bottom, botIntersect)
     // elif Option.isSome botIntersect then
         // (Bottom, botIntersect)
     // elif Option.isSome rightIntersect then
@@ -120,7 +128,7 @@ let LineMove intersectType position (box: boxAsLines) =
     let wireOffset = 5.0
     if position <> None then 
         let (pos: XYPos) = Option.get position
-        if intersectType = Top then
+        if intersectType = Top || intersectType = Bottom then
             let midpoint = ((box.top.finish.X - box.top.start.X) / 2.0) + box.top.start.X
             if pos.X < midpoint then
                 box.top.start.X - pos.X - wireOffset
@@ -221,6 +229,4 @@ let smartAutoroute (model: Model) (wire: Wire): Wire =
     else
         autoroute model wire
 
-    //TODO fix bot left top issues
-    //moveSegment model wire.Segments[3] 10
 
