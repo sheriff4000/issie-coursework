@@ -111,6 +111,9 @@ let getComponentInfo (model:Model) =
     model.Symbol.Symbols
     |> Map.map (fun id symbol -> symbol.Component)
 
+
+/// HLP23: Sherif
+/// This function takes in two lists and returns the elements in newList that aren't in oldList
 let rec listDifference (newList: 'a list) (oldList: 'a list) = 
         match oldList with 
             | el::tl -> 
