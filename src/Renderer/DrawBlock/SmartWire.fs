@@ -41,6 +41,13 @@ type boxAsLines =
 
 type IntersectType = Top | Bottom | Left | Right
 
+type Intersect = {
+    box: boxAsLines
+    line: LineSeg 
+    intersectType: IntersectType 
+    position: Option<XYPos>
+    }
+
 let ComponentToBox (comp: Component) =
     let topLeft = {X = comp.X; Y = comp.Y}
     let topRight = {X = comp.X + comp.W; Y = comp.Y}
@@ -167,65 +174,75 @@ let moveSeg2 (model:Model) (seg:Segment) (distance:float) =
 
 let smartAutoroute (model: Model) (wire: Wire): Wire = 
     let segMap = WireToLineSegs wire
-
-    let componentBoxes = 
-        SmartHelpers.getComponentInfo model
-        |> Map.values
-        |> List.ofSeq
-        |> List.map ComponentToBox
+    let getIntersects model wire = 
+        
+        let componentBoxes = 
+            SmartHelpers.getComponentInfo model
+            |> Map.values
+            |> List.ofSeq
+            |> List.map ComponentToBox
     
-    let intersects =
+    //let (intersects: Intersect list) =
         List.allPairs componentBoxes (List.ofSeq (Map.values segMap))
         |> List.map (fun (box, line) -> box, line, (SegBoxIntersect box line))
         |> List.filter (fun (_, _, (intersect, position)) -> (intersect, position) <> (Top, None))
+        |> List.map (fun (box', line', (intersect', position')) -> {box = box'; line = line'; intersectType = intersect'; position = position'})
 
+    let initIntersects = getIntersects model wire
 
-    // let wireUpdater currWire currIntersect =
+    let intersectPrinter (intersect: Intersect): unit = 
+        let segIndex = 
+            Map.tryFindKey (fun _ l -> l = intersect.line) segMap
+            |> Option.defaultValue 0
+        printfn $"intersection at {intersect.intersectType} of component, segment = {segIndex}, linemove would be {LineMove intersect.intersectType intersect.position intersect.box}"
 
-    //     match currIntersect with
-    //         | (box, line, (intersectType, position)) -> 
-    //             let segIndex = 
-    //                 Map.tryFindKey (fun _ l -> l = line) segMap
-    //                 |> Option.defaultValue 0
-
-    //             let dist = LineMove intersectType position box
-    //             printfn $"linemove = {dist}, segment = {segIndex}"
-
-    //             if position <> None then
-    //                 moveSegment model (currWire.Segments[segIndex]) (dist) 
-    //             else
-    //                 currWire
-    // if List.isEmpty intersects then
-    //     wire
-    // else
-    //     (wire, intersects)
-    //     ||> List.fold wireUpdater
-
-    let intersectPrinter intersect: unit = 
-        match intersect with
-            | (box, line, ((intersectType: IntersectType), (position: XYPos Option))) ->
-                let segIndex = 
-                    Map.tryFindKey (fun _ l -> l = line) segMap
-                    |> Option.defaultValue 0
-                printfn $"intersection at {intersectType} of component, segment = {segIndex}, linemove would be {LineMove intersectType position box}"
-
-    intersects
+    initIntersects
     |> List.map intersectPrinter
     |> ignore
 
-    let wireChange currWire intersect = 
-        match intersect with
-            | (box, line, ((intersectType: IntersectType), (position: XYPos Option))) ->
-                let segIndex = 
-                    Map.tryFindKey (fun _ l -> l = line) segMap
-                    |> Option.defaultValue 0
-                let dist = LineMove intersectType position box
+    // let wireChange currWire (intersect: Intersect) = 
+    //     match intersect with
+    //         | (box, line, ((intersectType: IntersectType), (position: XYPos Option))) ->
+    //             let segIndex = 
+    //                 Map.tryFindKey (fun _ l -> l = line) segMap
+    //                 |> Option.defaultValue 0
+    //             let dist = LineMove intersectType position box
+
                     
-                moveSegment model currWire.Segments[segIndex] dist
-            
-    if not (List.isEmpty intersects) then 
-        (wire, intersects)
-        ||> List.fold wireChange
+    //             moveSegment model currWire.Segments[segIndex] dist
+
+    //let contradictingRoute = 
+    let rec wireRecursive currWire (intersects: Intersect list) = 
+        let currIntersects = getIntersects model currWire
+
+        /// contradiction is true when the previous change resulted in a separate intersection 
+        /// between a wire and a symbol
+        let contradiction = (List.length currIntersects) = (List.length intersects)
+
+        if List.isEmpty currIntersects then
+            currWire
+        else
+            match intersects with
+                | intersect::_ ->
+                    let segIndex = 
+                        Map.tryFindKey (fun _ l -> l = intersect.line) segMap
+                        |> Option.defaultValue 0
+                    let dist = LineMove intersect.intersectType intersect.position intersect.box
+                    
+                    let newWire = 
+                        if contradiction then 
+                            let newIntersect = SmartHelpers.listDifference currIntersects intersects
+                            moveSegment model currWire.Segments[segIndex] dist
+                        else
+                             moveSegment model currWire.Segments[segIndex] dist
+
+                    wireRecursive newWire (List.tail intersects)
+                | _ -> currWire
+    
+    if not (List.isEmpty initIntersects) then 
+        // (wire, intersects)
+        // ||> List.fold wireChange
+        wireRecursive wire initIntersects
     else
         autoroute model wire
 
