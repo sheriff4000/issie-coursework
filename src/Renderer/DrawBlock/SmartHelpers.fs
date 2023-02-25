@@ -112,6 +112,16 @@ let getComponentInfo (model:Model) =
     |> Map.map (fun id symbol -> symbol.Component)
 
 
+
+/// HLP23: Sherif
+/// This function takes in two lists and returns the elements in newList that aren't in oldList
+let rec listDifference (newList: 'a list) (oldList: 'a list) = 
+        match oldList with 
+            | el::tl -> 
+                let outList = List.except (seq {el}) newList
+                listDifference outList tl
+            | [] -> newList
+
 // HLP23: Luke
 // This function returns a list of the IDs of all the input ports of a symbol
 let getInputPortIds
@@ -205,3 +215,4 @@ let connectingWires (symbol1:Symbol) (symbol2:Symbol) (model:Model)=
         List.map (isConnected) (allWires model)
         |> List.filter (fun f -> f <> None) //removes None entries from list
         |> List.map removeOption
+
