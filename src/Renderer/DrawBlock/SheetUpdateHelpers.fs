@@ -636,9 +636,10 @@ let validateTwoSelectedSymbols (model:Model) =
 /// However different testing may be needed, so who knows?
 /// Return the vertical channel between two bounding boxes, if they do not intersect and
 /// their vertical coordinates overlap.
-let rec getChannel (bb1:BoundingBox) (bb2:BoundingBox) : BoundingBox option =
+
+let rec getVerticalChannel (bb1:BoundingBox) (bb2:BoundingBox) : BoundingBox option =
     if bb1.TopLeft.X > bb2.TopLeft.X then
-        getChannel bb2 bb1
+        getVerticalChannel bb2 bb1
     else
         if  bb1.TopLeft.X + bb1.W > bb2.TopLeft.X then
             None // horizontal intersection
@@ -647,8 +648,27 @@ let rec getChannel (bb1:BoundingBox) (bb2:BoundingBox) : BoundingBox option =
         else
             let x1, x2 = bb1.TopLeft.X + bb1.W, bb2.TopLeft.X // horizontal channel
             let union = boxUnion bb1 bb2
-            let topLeft = {Y=union.TopLeft.Y; X=x2}
+            let topLeft = {Y=union.TopLeft.Y; X=x1}
             Some {TopLeft = topLeft; H = union.H; W = x2 - x1}
 
-        
+
+
+
+///HLP23: Anthony
+/// This function returns the horizontal channel between two bounding boxes, if they do not intersect and their vertical coordinates overlap
+
+
+let rec getHorizontalChannel (bb1:BoundingBox) (bb2:BoundingBox): BoundingBox option = 
+    if bb1.TopLeft.Y > bb2.TopLeft.Y then
+        getHorizontalChannel bb2 bb1
+    else
+        if bb1.TopLeft.Y + bb1.H > bb2.TopLeft.Y then
+            None // vertical intersection
+        elif bb1.TopLeft.X > bb2.TopLeft.X + bb2.W || bb1.TopLeft.X + bb1.W < bb2.TopLeft.X then
+            None // symbols are not aligned horizontally
+        else
+            let x1, x2 = bb1.TopLeft.Y + bb1.H, bb2.TopLeft.Y // horizontal channel
+            let union = boxUnion bb1 bb2
+            let topLeft = {Y=x1; X=union.TopLeft.X}
+            Some {TopLeft = topLeft; W = union.W; H = x2 - x1}
 

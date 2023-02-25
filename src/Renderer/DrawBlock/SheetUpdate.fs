@@ -767,11 +767,16 @@ let update (msg : Msg) (model : Model): Model*Cmd<Msg> =
          |> function
             | Some (s1,s2) ->
                 let bBoxes = model.BoundingBoxes
-                getChannel bBoxes[s1.Id] bBoxes[s2.Id]
+                getVerticalChannel bBoxes[s1.Id] bBoxes[s2.Id]
                 |> function 
                    | None -> 
-                        printfn "Symbols are not oriented for a vertical channel"
-                        model, Cmd.none
+                        getHorizontalChannel bBoxes[s1.Id] bBoxes[s2.Id]
+                        |> function
+                            | None ->
+                                printfn "no horizontal or vertical channel"
+                                model, Cmd.none 
+                            | Some channel ->
+                                {model with Wire = SmartChannel.smartChannelRoute Horizontal channel model.Wire}, Cmd.none 
                    | Some channel ->
                         {model with Wire = SmartChannel.smartChannelRoute Vertical channel model.Wire}, Cmd.none
             | None -> 
