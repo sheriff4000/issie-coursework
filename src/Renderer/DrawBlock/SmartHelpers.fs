@@ -1,4 +1,4 @@
-﻿module SmartHelpers
+module SmartHelpers
 open CommonTypes
 open DrawHelpers
 open DrawModelType
@@ -112,6 +112,7 @@ let getComponentInfo (model:Model) =
     |> Map.map (fun id symbol -> symbol.Component)
 
 
+
 /// HLP23: Sherif
 /// This function takes in two lists and returns the elements in newList that aren't in oldList
 let rec listDifference (newList: 'a list) (oldList: 'a list) = 
@@ -120,3 +121,98 @@ let rec listDifference (newList: 'a list) (oldList: 'a list) =
                 let outList = List.except (seq {el}) newList
                 listDifference outList tl
             | [] -> newList
+
+// HLP23: Luke
+// This function returns a list of the IDs of all the input ports of a symbol
+let getInputPortIds
+    (symbol: Symbol)
+    : string list =
+    List.map (fun (x:Port) -> x.Id) symbol.Component.InputPorts
+
+// HLP23: Luke
+// This function returns whether a wire is inputted into a symbol
+let isSymbolInputForWire
+    (symbol: Symbol)
+    (wire: Wire)
+    : bool =
+    symbol
+    |> getInputPortIds
+    |> List.contains (string wire.InputPort)
+
+// HLP23: Luke
+// This function get the minimum distance between horizontal ports of a symbol
+let getPortDistancesH
+    (symbol: Symbol)
+    : float =
+    let maxPortNumber =
+        symbol.PortMaps.Order
+        |> Map.filter (fun x _ -> x = Top || x = Bottom)
+        |> Map.toList
+        |> List.map (fun (_,y) -> y.Length)
+        |> List.max
+    
+    (symbol.Component.W * (Option.get symbol.HScale)) / float (maxPortNumber+1)
+
+// HLP23: Luke
+// This function returns the port number counting from left to right and its edge
+let getPortPositionFromLeft
+    (symbol: Symbol)
+    (portId: string)
+    : (Edge*int) option =
+    let edge = 
+        symbol.PortMaps.Order
+        |> Map.toList
+        |> List.filter (fun (_,lst) -> List.contains portId lst)
+    
+    if edge.Length > 0
+    then 
+        let index =
+            edge[0]
+            |> snd
+            |> List.findIndex (fun x -> 
+                printfn "id %A %A" x portId
+                x=portId)
+        let edgeName = fst edge[0]
+
+        if edgeName = Top
+        then Some (fst edge[0], (snd edge[0]).Length - 1 - index)
+        else Some (fst edge[0], index)
+        
+    else None
+
+
+//HLP23: AUTHOR Ewan
+//This function returns a list of all the wires in the model
+let allWires (model: BusWireT.Model) = 
+        let getWire (connectID, wire: 'b)=
+            wire
+        Map.toList model.Wires
+        |> List.map snd
+
+//HLP23: AUTHOR Ewan
+//This function find all the wires connected between two symbols
+//This function returns a list of 3 part tuples
+//containing the wire, the connected port ID for the first symbol, and the connected port ID for the second symbol
+
+let connectingWires (symbol1:Symbol) (symbol2:Symbol) (model:Model)=
+        let isConnected (wire)=
+            if Map.tryFind (string wire.InputPort) symbol1.PortMaps.Orientation <> None
+            then 
+                if Map.tryFind (string wire.OutputPort) symbol2.PortMaps.Orientation <> None
+                then Some (wire, (string wire.InputPort), (string wire.OutputPort))
+                else None
+            else 
+                if Map.tryFind (string wire.OutputPort) symbol1.PortMaps.Orientation <> None
+                then 
+                    if Map.tryFind (string wire.InputPort) symbol2.PortMaps.Orientation <> None
+                    then Some (wire, (string wire.OutputPort), (string wire.InputPort))
+                    else None
+                else None
+        let removeOption =
+            function
+            |Some x -> x
+            |None -> failwithf "can't happen"
+        List.map (isConnected) (allWires model)
+        |> List.filter (fun f -> f <> None) //removes None entries from list
+        |> List.map removeOption
+
