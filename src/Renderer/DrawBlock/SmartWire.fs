@@ -46,7 +46,7 @@ type Intersect = {
     box: boxLines
     line: LineSeg 
     intersectType: IntersectType 
-    position: Option<XYPos>
+    position: XYPos
     }
 
 let ComponentToBox (comp: Component) =
@@ -83,7 +83,6 @@ let unionBoxLines (box1: boxLines) (box2: boxLines) =
 
 let WireToLineSegs (wire: Wire) = 
     let wireStart = wire.StartPos
-    let segMap = Map.empty
     let folder initialOrientation (currPos: XYPos) (seg:Segment) =
 
         if initialOrientation = Horizontal then // evens are horizontal
@@ -102,6 +101,7 @@ let WireToLineSegs (wire: Wire) =
     |> List.pairwise
     |> List.map (fun (startpoint,endpoint) -> {start = startpoint; finish = endpoint})
     |> List.mapi (fun idx line -> (idx, line))
+    //|> List.filter (fun (idx,_) -> idx = 0 )
     |> Map.ofList
 
 
@@ -130,7 +130,6 @@ let SegBoxIntersect (box: boxLines) (line: LineSeg) =
     let leftIntersect = LineSegIntersect box.left line
     let botIntersect = LineSegIntersect box.bottom line
     let rightIntersect = LineSegIntersect box.right line
-    let intersectList = []
     
     // if Option.isSome topIntersect && Option.isSome botIntersect then
     //     (Top, topIntersect)
@@ -146,40 +145,72 @@ let SegBoxIntersect (box: boxLines) (line: LineSeg) =
     //     (Bottom, botIntersect)
     let topOut = 
         if Option.isSome topIntersect then
-            [(Top, topIntersect)]
+            [(Top, (Option.get topIntersect))]
         elif Option.isSome botIntersect then
-            [(Bottom, botIntersect)]
+            [(Bottom, (Option.get botIntersect))]
         else 
             []
     let leftOut = 
         if Option.isSome leftIntersect then
-            [(Left, leftIntersect)]
+            [(Left, Option.get (leftIntersect))]
         elif Option.isSome rightIntersect then
-            [(Right, rightIntersect)]
+            [(Right, (Option.get rightIntersect))]
         else
             []
     // elif Option.isSome rightIntersect then
         // (Right, rightIntersect)
     topOut @ leftOut
 
-let LineMove intersectType position (box: boxLines) =
+let LineMove intersectType (position: XYPos) (box: boxLines) =
     let wireOffset = 5.0
-    if position <> None then 
-        let (pos: XYPos) = Option.get position
-        if intersectType = Top || intersectType = Bottom then
-            let midpoint = ((box.top.finish.X - box.top.start.X) / 2.0) + box.top.start.X
-            if pos.X < midpoint then
-                box.top.start.X - pos.X - wireOffset
-            else 
-                box.top.finish.X - pos.X + wireOffset
+    //let (pos: XYPos) = Option.get position
+    let pos = position
+    if intersectType = Top || intersectType = Bottom then
+        let midpoint = ((box.top.finish.X - box.top.start.X) / 2.0) + box.top.start.X
+        if pos.X < midpoint then
+            box.top.start.X - pos.X - wireOffset
         else 
-            let midpoint = ((box.left.finish.Y - box.left.start.Y) / 2.0) + box.left.start.Y
-            if pos.Y < midpoint then
-                box.left.start.Y - pos.Y - wireOffset
-            else 
-                box.left.finish.Y - pos.Y + wireOffset
-    else
-        0.0
+            box.top.finish.X - pos.X + wireOffset
+    else 
+        let midpoint = ((box.left.finish.Y - box.left.start.Y) / 2.0) + box.left.start.Y
+        if pos.Y < midpoint then
+            box.left.start.Y - pos.Y - wireOffset
+        else 
+            box.left.finish.Y - pos.Y + wireOffset
+
+let getSegPositions wire idx = 
+    let segMap = WireToLineSegs wire
+    let segPositions = segMap[idx]
+
+    segPositions.start, segPositions.finish
+
+let addFakeSegs (wire: Wire) (idx: int) (intertsect: Intersect) = 
+    
+    let segments = wire.Segments
+    let defaultSeg = segments[idx-1]
+    let addSegs = [{defaultSeg with Length = 0}; {defaultSeg with Length = 0}]
+    let prevSegs = 
+        if segments[idx-1].Mode = Manual then
+            addSegs
+        else
+            []
+    let nextSegs = 
+        if segments[idx+1].Mode = Manual then
+            addSegs
+        else
+            []
+
+    let newSegs = 
+        segments[..(idx-1)] @ prevSegs @ [segments[idx]] @ nextSegs @ segments[(idx+1)..]
+
+    newSegs
+    |> List.mapi (fun idx seg -> {seg with Index = idx})
+
+
+    
+
+
+
 
 let moveSeg2 (model:Model) (seg:Segment) (distance:float) = 
     let wire = model.Wires[seg.WireId]
@@ -197,9 +228,9 @@ let moveSeg2 (model:Model) (seg:Segment) (distance:float) =
 
         let newPrevSeg = { prevSeg with Length = prevSeg.Length + safeDistance }
         let newNextSeg = { nextSeg with Length = nextSeg.Length - safeDistance }
-        let newMovedSeg = { movedSeg with Mode = Manual }
+        //let newMovedSeg = { movedSeg with Mode = Manual }
         let newSegments = 
-            segments[.. idx - 2] @ [newPrevSeg; newMovedSeg; newNextSeg] @ segments[idx + 2 ..]
+            segments[.. idx - 2] @ [newPrevSeg; movedSeg; newNextSeg] @ segments[idx + 2 ..]
 
         { wire with Segments = newSegments }
 
@@ -207,7 +238,7 @@ let moveSeg2 (model:Model) (seg:Segment) (distance:float) =
 let smartAutoroute (model: Model) (wire: Wire): Wire = 
     let destPos, startPos =
         Symbol.getTwoPortLocations (model.Symbol) (wire.InputPort) (wire.OutputPort)
-
+    //printfn $"start pos = {startPos}" |> ignore
     let segMap = WireToLineSegs wire
     let getIntersects model wire = 
         
@@ -220,8 +251,12 @@ let smartAutoroute (model: Model) (wire: Wire): Wire =
     //let (intersects: Intersect list) =
         List.allPairs componentBoxes (List.ofSeq (Map.values segMap))
         |> List.collect (fun (box, line) -> (List.map (fun x -> box, line, x) (SegBoxIntersect box line)))
-        |> List.filter (fun (_, _, (intersect, position)) -> (intersect, position) <> (Top, None))
+        //|> List.filter (fun (_, _, (intersect, position)) -> (intersect, position) <> (Top, None))
         |> List.map (fun (box', line', (intersect', position')) -> {box = box'; line = line'; intersectType = intersect'; position = position'})
+        |> List.filter (fun (i: Intersect) -> 
+            //printfn $"intersect pos = {i.position}"
+            //printfn $"intersect pos = start pos {i.position = startPos}"
+            i.position <> startPos && i.position <> destPos)
 
     let initIntersects = getIntersects model wire
 
@@ -249,7 +284,7 @@ let smartAutoroute (model: Model) (wire: Wire): Wire =
                 | intersect::_ ->
                     let segIndex = 
                         Map.tryFindKey (fun _ l -> l = intersect.line) segMap
-                        |> Option.defaultValue 0
+                        |> Option.defaultValue 0 //Shouldn't happen
                     let dist = LineMove intersect.intersectType intersect.position intersect.box
                     
                     let newWire = 
@@ -258,13 +293,15 @@ let smartAutoroute (model: Model) (wire: Wire): Wire =
                         if contradiction then 
 
                             let newIntersects = SmartHelpers.listDifference currIntersects intersects
-                            printfn $"newIntersects length {List.length newIntersects}" |> ignore
+                            printfn $"alpha newIntersects length {List.length newIntersects}" |> ignore
 
                             let oldIntersects = SmartHelpers.listDifference intersects currIntersects
-                            printfn $"contradiction with intersect {newIntersects[0].intersectType}" |> ignore
+                            printfn $"alpha oldIntersects length {List.length oldIntersects}"
+                            printfn $"alpha contradiction with intersect {newIntersects[0].intersectType}" |> ignore
                             let unionBox = 
-                                if (List.length newIntersects = 1) && (List.length oldIntersects = 1) then
-                                    Some (unionBoxLines newIntersects[0].box oldIntersects[0].box)
+                                //if (List.length newIntersects = 1) && (List.length oldIntersects = 1) then
+                                if not (List.isEmpty newIntersects) then  //&& not (List.isEmpty oldIntersects) then
+                                    Some (unionBoxLines newIntersects[0].box intersect.box)
                                 else
                                     None
                             if Option.isSome unionBox then
@@ -288,5 +325,9 @@ let smartAutoroute (model: Model) (wire: Wire): Wire =
         wireRecursive wire initIntersects
     else
         autoroute model wire
+
+/// TODO: consider adding wire segments of length near zero at intersections to allow for routearound
+/// figure out why some intersections are ignored (I suspect it has to do with the manual mode so maybe add segments)
+/// something like if prevSeg or nextSeg have mode = manual then add new ones
 
 
