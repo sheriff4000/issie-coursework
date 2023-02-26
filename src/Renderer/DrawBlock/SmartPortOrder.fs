@@ -84,13 +84,12 @@ let reOrderPorts
     printfn $"ReorderPorts: ToOrder:{symbolToOrder.Component.Label}, Other:{otherSymbol.Component.Label}"
     let sModel = wModel.Symbol
     
-    printfn $"Wire List:{(SmartHelpers.allWires wModel).Length}"
+  
     
    // printfn $"Connected wires: {SmartHelpers.connectingWires symbolToOrder otherSymbol wModel}"
 
     
 
-    let connectWires = SmartHelpers.connectingWires symbolToOrder otherSymbol wModel
     let firstElement (first,second,third) = 
         first
     
@@ -181,25 +180,30 @@ let reOrderPorts
         if List.exists (fun x -> if x = inputPort then true else false) allPortsOnSymbol
         then 
             printfn $"HEY THERE ALEERA"
+            printfn $"HEY THERE {inputPort}"
             Symbol.getPort model inputPort
         else 
             printfn $"GOODBYE ALEERA"
+            printfn $"What was input {inputPort}"
+            printfn $"Wire id {wire.WId}"
             Symbol.getPort model outputPort
     //input = symbol, port1, port2, output = new symbol
     //test if this function works
     let swapPorts (symbol:Symbol) (port1:Port) (port2:Port) =
-       // printfn $"CHECK ALEERA {port2.Id}"
-     //   let ports = symbol.PortMaps.Order[Left]
-     //   printfn $"PORT LIST: {ports}"
+        printfn $"CHECK ALEERA {port2.Id}"
+        printfn $"CHECK ALEERA {port1.Id}"
+        let ports = symbol.PortMaps.Order[Left]
+        printfn $"PORT LIST: {ports}"
         
         let newPos = symbol.Pos + (getPortPos symbol port2)
         
         let oldPos = symbol.Pos + (getPortPos symbol port1)
-     //   printfn $"New position: {newPos}"
-     //   printfn $"Old position: {oldPos}"
+        printfn $"New position: {newPos}"
+        printfn $"Old position: {oldPos}"
         SymbolUpdatePortHelpers.updatePortPos symbol newPos port1.Id
         
     let isInterconnected  (index) (symbol:Symbol) (fstWire,sndWire)=
+        printfn $"Wire id first: {fstWire.WId}"
         let fstWireAseg = BusWire.getAbsSegments fstWire
         let sndWireAseg = BusWire.getAbsSegments sndWire
         let lst = List.collect (compareSegments sndWireAseg 0 []) fstWireAseg
@@ -211,7 +215,7 @@ let reOrderPorts
             //is interconnected
             
             let port1 = getPortFromWire sModel symbol fstWire
-            
+            printfn $"get port from wire {port1.Id}"
             let port2 = getPortFromWire sModel symbol sndWire
             
             swapPorts symbol port1 port2
@@ -235,6 +239,8 @@ let reOrderPorts
             if x.WId < y.WId 
             then (x,y)
             else (y,x)
+        printfn $"DOUBLE DOUBLE CHECK: {wireList|> List.allPairs wireList 
+        |> List.filter isNotDuplicate }"
         wireList
         |> List.allPairs wireList 
         |> List.filter isNotDuplicate
@@ -243,15 +249,14 @@ let reOrderPorts
 
     let rec getAllInterconnected (symbol:Symbol) (index:int) (wireList: Wire List):Symbol = 
         let wirePairs = (getWirePairs wireList)//need to change to all connected wires
-        printfn $"Wire PAIRS : {wirePairs.Length}"
+        printfn $"Wire PAIRS : {wirePairs}"
         let newSymbol = isInterconnected 0 symbol wirePairs[index]
         let newWireList =
             if newSymbol <> symbol
             then 
                 printfn "REPEAT LOOP"
-                (updateSymbolWires ({wModel with Symbol = {sModel with Symbols = Map.add newSymbol.Id newSymbol sModel.Symbols}})  symbolToOrder.Id).Wires
-                |> Map.toList
-                |> List.map (fun (x,y) -> y)
+                (updateSymbolWires ({wModel with Symbol = {sModel with Symbols = Map.add newSymbol.Id newSymbol sModel.Symbols}})  symbolToOrder.Id)
+                |> SmartHelpers.getConnectedWires [] 0 symbolToOrder otherSymbol
                 
             else 
                 wireList
@@ -277,8 +282,13 @@ let reOrderPorts
     ////printfn $"Connected wires: {wiresToOrder}"
     let wiresToOrder = []
     let componentList = [symbolToOrder.Id; otherSymbol.Id]
-    let wires = BusWireUpdateHelpers.getConnectedWires wModel componentList
-    printfn $"CHECK wire list : {wires.Length}"
+    
+    
+    let initialList: Wire List = []
+    let initialIndex = 0
+    let wires: Wire List = SmartHelpers.getConnectedWires initialList initialIndex symbolToOrder otherSymbol wModel    
+        
+    printfn $"CHECK wire list : {wires}"
 
     
     //printfn $"changed : {changedWires.Wires}"
