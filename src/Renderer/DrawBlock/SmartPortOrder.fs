@@ -21,11 +21,7 @@ open Operators
     Normally it will update multiple wires and symbols in the BusWire model so could use the SmartHelper 
     functions for this purpose.
 *)
-type BusWireHelpers = {
-    UpdateWire: Model->Wire->bool->Wire
-    UpdateWires: Model -> List<ComponentId> -> XYPos -> Model
-    UpdateSymbolWires: Model -> ComponentId -> Model
-    }
+
 /// To test this, it must be given two symbols interconnected by wires. It then reorders the ports on
 /// symbolToOrder so that the connecting wires do not cross.
 /// Tt should work out the interconnecting wires (wiresToOrder) from 
@@ -84,7 +80,6 @@ let reOrderPorts
     (wModel: BusWireT.Model) 
     (symbolToOrder: Symbol) 
     (otherSymbol: Symbol)
-    (helpers:BusWireHelpers) 
         : BusWireT.Model =
     printfn $"ReorderPorts: ToOrder:{symbolToOrder.Component.Label}, Other:{otherSymbol.Component.Label}"
     let sModel = wModel.Symbol
