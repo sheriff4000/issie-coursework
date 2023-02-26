@@ -32,54 +32,54 @@ type BusWireHelpers = {
 ////the two symbols, wModel.Wires and sModel.Ports
 /// It will do nothing if symbolToOrder is not a Custom component (which has re-orderable ports).
 /// 
-    let updateWire (model : Model) (wire : Wire) (reverse : bool) =
-        let newPort = 
-            match reverse with
-            | true -> Symbol.getInputPortLocation None model.Symbol wire.InputPort
-            | false -> Symbol.getOutputPortLocation None model.Symbol wire.OutputPort
-        if reverse then
-            BusWireUpdateHelpers.partialAutoroute model (BusWireUpdateHelpers.reverseWire wire) newPort true
-            |> Option.map BusWireUpdateHelpers.reverseWire
-        else 
-            BusWireUpdateHelpers.partialAutoroute model wire newPort false
-        |> Option.defaultValue (SmartWire.smartAutoroute model wire)
-    let updateWires (model : Model) (compIdList : ComponentId list) (diff : XYPos) =
+let updateWire (model : Model) (wire : Wire) (reverse : bool) =
+    let newPort = 
+        match reverse with
+        | true -> Symbol.getInputPortLocation None model.Symbol wire.InputPort
+        | false -> Symbol.getOutputPortLocation None model.Symbol wire.OutputPort
+    if reverse then
+        BusWireUpdateHelpers.partialAutoroute model (BusWireUpdateHelpers.reverseWire wire) newPort true
+        |> Option.map BusWireUpdateHelpers.reverseWire
+    else 
+        BusWireUpdateHelpers.partialAutoroute model wire newPort false
+    |> Option.defaultValue (SmartWire.smartAutoroute model wire)
 
-        let wires = BusWireUpdateHelpers.filterWiresByCompMoved model compIdList
+let updateWires (model : Model) (compIdList : ComponentId list) (diff : XYPos) =
+    let wires = BusWireUpdateHelpers.filterWiresByCompMoved model compIdList
+    let newWires =
+        model.Wires
+        |> Map.toList
+        |> List.map (fun (cId, wire) -> 
+            if List.contains cId wires.Both //Translate wires that are connected to moving components on both sides
+            then (cId, BusWireUpdateHelpers.moveWire wire diff)
+            elif List.contains cId wires.Inputs //Only route wires connected to ports that moved for efficiency
+            then (cId, updateWire model wire true)
+            elif List.contains cId wires.Outputs
+            then (cId, updateWire model wire false)
+            else (cId, wire))
+        |> Map.ofList
 
-        let newWires =
-            model.Wires
-            |> Map.toList
-            |> List.map (fun (cId, wire) -> 
-                if List.contains cId wires.Both //Translate wires that are connected to moving components on both sides
-                then (cId, BusWireUpdateHelpers.moveWire wire diff)
-                elif List.contains cId wires.Inputs //Only route wires connected to ports that moved for efficiency
-                then (cId, updateWire model wire true)
-                elif List.contains cId wires.Outputs
-                then (cId, updateWire model wire false)
-                else (cId, wire))
-            |> Map.ofList
+    { model with Wires = newWires }
 
-        { model with Wires = newWires }
+let updateSymbolWires (model: Model) (compId: ComponentId) =
+    let wires = BusWireUpdateHelpers.filterWiresByCompMoved model [compId]
+    
+    let newWires =
+        model.Wires
+        |> Map.toList
+        |> List.map (fun (cId, wire) ->
+            if List.contains cId wires.Both then // Update wires that are connected on both sides
+                cId, (
+                    updateWire model wire true 
+                    |> fun wire -> updateWire model wire false)
+            elif List.contains cId wires.Inputs then 
+                cId, updateWire model wire true
+            elif List.contains cId wires.Outputs then
+                cId, updateWire model wire false
+            else cId, wire)
+        |> Map.ofList
+    { model with Wires = newWires }
 
-    let updateSymbolWires (model: Model) (compId: ComponentId) =
-        let wires = BusWireUpdateHelpers.filterWiresByCompMoved model [compId]
-        
-        let newWires =
-            model.Wires
-            |> Map.toList
-            |> List.map (fun (cId, wire) ->
-                if List.contains cId wires.Both then // Update wires that are connected on both sides
-                    cId, (
-                        updateWire model wire true 
-                        |> fun wire -> updateWire model wire false)
-                elif List.contains cId wires.Inputs then 
-                    cId, updateWire model wire true
-                elif List.contains cId wires.Outputs then
-                    cId, updateWire model wire false
-                else cId, wire)
-            |> Map.ofList
-        { model with Wires = newWires }
 let reOrderPorts 
     (wModel: BusWireT.Model) 
     (symbolToOrder: Symbol) 
@@ -196,8 +196,6 @@ let reOrderPorts
        // printfn $"CHECK ALEERA {port2.Id}"
      //   let ports = symbol.PortMaps.Order[Left]
      //   printfn $"PORT LIST: {ports}"
-
-        let side = getSymbolPortOrientation symbol port2
         
         let newPos = symbol.Pos + (getPortPos symbol port2)
         
@@ -277,20 +275,20 @@ let reOrderPorts
   //  printfn $"CHECK INTERCONNECTED PAIRS: {getWirePairs (SmartHelpers.allWires wModel)}"
     
 
-    let wires =List.map firstElement connectWires
+  //  let wires =List.map firstElement connectWires
  //   let wire0 = BusWire.getAbsSegments wires[0]
   //  let wire1 = BusWire.getAbsSegments wires[1]
   //  printfn $"Intersecting wires: {isInterconnected wire0 wire1}"
     ////printfn $"Connected wires: {wiresToOrder}"
     let wiresToOrder = []
-    let wires = (SmartHelpers.allWires wModel)
-
-
+    let componentList = [symbolToOrder.Id; otherSymbol.Id]
+    let wires = BusWireUpdateHelpers.getConnectedWires wModel componentList
+    printfn $"CHECK wire list : {wires.Length}"
 
     
     //printfn $"changed : {changedWires.Wires}"
     //need to change wires so that they are also updated after symbol changes
-    let symbol' = getAllInterconnected symbolToOrder 0 (SmartHelpers.allWires wModel)//symbolToOrder // no change at the moment
+    let symbol' = getAllInterconnected symbolToOrder 0 wires// no change at the moment
     let changedWires = updateSymbolWires ({wModel with Symbol = {sModel with Symbols = Map.add symbol'.Id symbol' sModel.Symbols}})  symbolToOrder.Id
     // HLP23: This could be cleaned up using Optics - see SmartHelpers for examples
     {wModel with 
