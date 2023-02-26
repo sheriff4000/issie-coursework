@@ -173,8 +173,9 @@ let orderWires (channelOrientation: Orientation) (modelWires: Map<ConnectionId, 
             let getHorizontalMidpoint (wire: Wire) = //THIS CAN BE A HELPER FUNCTION
                 wire.StartPos.X + ((getWireHorizontalLength wire) / 2.0)
             ids
-            |> List.sortBy (fun id -> (Map.find id modelWires) |> getHorizontalMidpoint ) 
+            
             |> List.sortBy (fun id -> (Map.find id modelWires) |> getWireHorizontalLength)
+            |> List.sortBy (fun id -> (Map.find id modelWires) |> getHorizontalMidpoint ) 
         
         | Horizontal ->
             let getFinalHeight (wire: Wire) = 
@@ -192,10 +193,7 @@ let wireSpacer (channelOrientation: Orientation) (channel: BoundingBox) (ids: li
         | Horizontal ->
             [1.0..numberOfWires] |> List.map (fun x -> channel.TopLeft.Y + ((channel.H / (numberOfWires + 1.0 )) * x))
 
-
-
-
-    
+ 
 let moveWires (channelOrientation: Orientation) (wires: Map<ConnectionId, Wire>) (wireSpacings: list<float>) (ids: list<ConnectionId>)  = 
     
     let updateWire (channelOrientation: Orientation) (wires: Map<ConnectionId, Wire>) (wireSpacing, id)  = 
@@ -213,7 +211,105 @@ let moveWires (channelOrientation: Orientation) (wires: Map<ConnectionId, Wire>)
     |> List.fold (updateWireFunction) wires
     
 
+let getActualWireSpacings (wires: Map<ConnectionId, Wire>) (wireSpacings: List<float>) (sortedIdsInChannel: List<ConnectionId>) =  
 
+    let getActualWireSpacing (wireSpacing: float) (wire: Wire)  = 
+        let minimum = wire.StartPos.X + wire.Segments[0].Length
+        let maximum = wire.StartPos.X + wire.Segments[0].Length + wire.Segments[2].Length + wire.Segments[4].Length + wire.Segments[6].Length
+        if wireSpacing < minimum then
+            minimum
+        elif wireSpacing > maximum then
+            maximum
+        else 
+            wireSpacing
+    
+    List.map (getActualWireSpacing) wireSpacings
+    |> List.mapi (fun i x -> x (Map.find sortedIdsInChannel[i] wires ))
+
+
+let checkWiresSufficientlySpaced (channel: BoundingBox) (actualWireSpacings: list<float>) : Option<List<int*int>> =
+    if List.length actualWireSpacings < 2 then
+        None
+
+    else
+        let spacePerWire = channel.W / float((List.length actualWireSpacings) + 1)
+        let indexes = [0..(List.length actualWireSpacings)-1]
+        let pairedIndexes = List.pairwise indexes
+        let wiresTooClose = 
+            List.pairwise actualWireSpacings
+            |> List.zip pairedIndexes
+            |> List.filter (fun ((i, j),(x, y)) -> (y - x) < (spacePerWire / 2.0))
+        if List.length wiresTooClose > 0 then
+            Some (wiresTooClose 
+                |> List.map (fun (x,y) -> x))
+        else
+            None
+
+let getMinimumSpacing (actualWireSpacings: list<float>) = 
+    actualWireSpacings
+    |> List.pairwise
+    |> List.map (fun (x,y) -> y-x)
+    |> List.min
+
+
+let improveWireOrder (channel: BoundingBox) (wireSpacings: list<float>) (wires: Map<ConnectionId, Wire>) (sortedIdsInChannel: list<ConnectionId>) = 
+    
+    let rec wireSwapper (sortedIdsInChannel: list<ConnectionId>)(wiresAlreadyDone: Set<ConnectionId*ConnectionId>) (wiresToSwap: list<ConnectionId * ConnectionId>) = 
+        let actualWireSpacings = getActualWireSpacings wires wireSpacings sortedIdsInChannel
+        if List.length wiresToSwap > 0 then
+            print "id's being swapped are:"
+            print wiresToSwap
+            print "id's already swapped are:"
+            print wiresAlreadyDone
+            let hd::tl = wiresToSwap
+            let leftId, rightId = hd
+            let oldMinimum = getMinimumSpacing actualWireSpacings
+            let leftIndex = List.findIndex (fun x -> x = leftId) sortedIdsInChannel
+            let rightIndex = List.findIndex (fun x -> x = rightId) sortedIdsInChannel
+            print "oldie"
+            print sortedIdsInChannel
+            let newSortedIdsInChannel = 
+                sortedIdsInChannel 
+                |> List.mapi (fun i id -> if i = leftIndex then rightId elif i = rightIndex then leftId else id)
+            print "newie"
+            print newSortedIdsInChannel
+            let possibleNewWireSpacings = getActualWireSpacings wires wireSpacings newSortedIdsInChannel
+            print "oldieSpacings:"
+            print actualWireSpacings
+            print "newieSpacings:"
+            print possibleNewWireSpacings
+            let newMinimum = getMinimumSpacing possibleNewWireSpacings
+            print "oldie minimum:"
+            print oldMinimum
+            print "newie average:"
+            print newMinimum
+            if newMinimum > oldMinimum then
+                print "YAY"
+                wireSwapper newSortedIdsInChannel (wiresAlreadyDone.Add((leftId, rightId)).Add((rightId, leftId))) tl 
+            else 
+                wireSwapper sortedIdsInChannel (wiresAlreadyDone.Add(leftId, rightId).Add(rightId, leftId)) tl 
+
+        else
+            print "looking for wires to swap. They are:"
+            let wiresToSwap = checkWiresSufficientlySpaced channel actualWireSpacings
+            print wiresToSwap
+            match wiresToSwap with
+                | None -> 
+                    print "no wires to swap -> returning";
+                    sortedIdsInChannel
+                | Some x -> 
+                    let actualWiresToSwap = 
+                        x
+                        |> List.map (fun (x,y) -> (sortedIdsInChannel[x], sortedIdsInChannel[y]))
+                        |> List.filter (fun (x,y) -> not(Set.contains (x,y) wiresAlreadyDone ));
+                    if List.length actualWiresToSwap < 1 then
+                        print "all wires you wanted to swap have already been swapped -> returning"
+                        sortedIdsInChannel
+                    else
+                        print "there are wires to swap that haven't been swapped yet. swapping them now"
+                        wireSwapper sortedIdsInChannel wiresAlreadyDone actualWiresToSwap
+           
+    wireSwapper sortedIdsInChannel Set.empty [] 
 
 
 
@@ -223,14 +319,13 @@ let smartChannelRoute //spaces wires evenly
         (model:Model) 
             :Model =
 
-    //tasks to do:
-    // 1. create horizontal bounding boxes, in addition to vertical ones (done)
-    // 2. check which wires go through the channel (done)
-    // 3. straighten the wires so that any wires a vertical section within the channel have the vertical section outside the channel (done)
-    // 4. create an order for the wires
-    // 5. create a list of the height each wire should be
-    // 6. move the wires so that they are that height
-    // 7. change let left, let right, let top etc.. to be one function, and create data structure Bounds and use it everywhere
+    /// what to do now:
+    /// 1. function which turns wire spacings into actual wire spacings based on constraints from the wires (done)
+    /// 2. function which checks if the actual wire spacings aren't good enough 
+    /// 3. function which swaps the order of two wires 
+    /// 4. Create some sort of recursive function which keeps improving the order of wires until it's optimal
+    ///     this should get you to 10pm -> then, create a new plan for an improvement.
+    
     // 8. Make the things that could be helper functions helper functions
     // 9. Work on fixing when the channels aren't spread properly (find two wires which are very close to each other and swap them then re-space)
     // 10. make everything neat and tidy
@@ -239,6 +334,12 @@ let smartChannelRoute //spaces wires evenly
     let straightenedModel = straightenHorizontalWires channelOrientation model wireIdsInChannel channel
     let sortedIdsInChannel = orderWires channelOrientation straightenedModel.Wires wireIdsInChannel
     let wireSpacings = wireSpacer channelOrientation channel sortedIdsInChannel
-    {straightenedModel with Wires = moveWires channelOrientation straightenedModel.Wires wireSpacings sortedIdsInChannel}
-    
+    print "number of wires in channel:"
+    print (List.length wireIdsInChannel)
+   
+    if channelOrientation = Vertical then
+        let newOrder = improveWireOrder channel wireSpacings straightenedModel.Wires sortedIdsInChannel
+        {straightenedModel with Wires = moveWires channelOrientation straightenedModel.Wires wireSpacings newOrder}
+    else    
+        {straightenedModel with Wires = moveWires channelOrientation straightenedModel.Wires wireSpacings sortedIdsInChannel}
     
