@@ -154,33 +154,35 @@ let getPortDistancesH
     (symbol.Component.W * (Option.get symbol.HScale)) / float (maxPortNumber+1)
 
 // HLP23: Luke
-// This function returns the port number counting from left to right and its edge
+// This function returns the port number for a wire conencted to a symbol counting from left to right and its edge
 let getPortPositionFromLeft
     (symbol: Symbol)
-    (portId: string)
-    : (Edge*int) option =
+    (wire: Wire)
+    : int option =
+    let portId =
+        if isSymbolInputForWire symbol wire
+        then string wire.InputPort
+        else string wire.OutputPort
+
     let edge = 
         symbol.PortMaps.Order
         |> Map.toList
         |> List.filter (fun (_,lst) -> List.contains portId lst)
-    
+
     if edge.Length > 0
     then 
         let index =
             edge[0]
             |> snd
-            |> List.findIndex (fun x -> 
-                printfn "id %A %A" x portId
-                x=portId)
+            |> List.findIndex (fun x -> x=portId)
         let edgeName = fst edge[0]
 
         if edgeName = Top
-        then Some (fst edge[0], (snd edge[0]).Length - 1 - index)
-        else Some (fst edge[0], index)
+        then 
+            Some ((snd edge[0]).Length - index)
+        else Some (index + 1)
         
     else None
-
-
 
 //HLP23: AUTHOR Ewan
 //This function returns a list of all the wires connected between two symbols
