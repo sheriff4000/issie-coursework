@@ -112,6 +112,16 @@ let getComponentInfo (model:Model) =
     |> Map.map (fun id symbol -> symbol.Component)
 
 
+
+/// HLP23: Sherif
+/// This function takes in two lists and returns the elements in newList that aren't in oldList
+let rec listDifference (newList: 'a list) (oldList: 'a list) = 
+        match oldList with 
+            | el::tl -> 
+                let outList = List.except (seq {el}) newList
+                listDifference outList tl
+            | [] -> newList
+
 // HLP23: Luke
 // This function returns a list of the IDs of all the input ports of a symbol
 let getInputPortIds
@@ -175,36 +185,20 @@ let getPortPositionFromLeft
     else None
 
 //HLP23: AUTHOR Ewan
-//This function returns a list of all the wires in the model
-let allWires (model: BusWireT.Model) = 
-        let getWire (connectID, wire: 'b)=
-            wire
-        Map.toList model.Wires
-        |> List.map snd
+//This function returns a list of all the wires connected between two symbols
+//To use, begin with the connectedWire input equalling [] and index equalling 0
 
-//HLP23: AUTHOR Ewan
-//This function find all the wires connected between two symbols
-//This function returns a list of 3 part tuples
-//containing the wire, the connected port ID for the first symbol, and the connected port ID for the second symbol
-
-let connectingWires (symbol1:Symbol) (symbol2:Symbol) (model:Model)=
-        let isConnected (wire)=
-            if Map.tryFind (string wire.InputPort) symbol1.PortMaps.Orientation <> None
-            then 
-                if Map.tryFind (string wire.OutputPort) symbol2.PortMaps.Orientation <> None
-                then Some (wire, (string wire.InputPort), (string wire.OutputPort))
-                else None
-            else 
-                if Map.tryFind (string wire.OutputPort) symbol1.PortMaps.Orientation <> None
+let rec getConnectedWires (connectedWires: Wire List) index symbol1 symbol2 (model:Model)= 
+                let wiresSymbol1 = BusWireUpdateHelpers.getConnectedWires model [symbol1.Id]
+                let wiresSymbol2 = BusWireUpdateHelpers.getConnectedWires model [symbol2.Id]
+                if index = wiresSymbol1.Length
                 then 
-                    if Map.tryFind (string wire.InputPort) symbol2.PortMaps.Orientation <> None
-                    then Some (wire, (string wire.OutputPort), (string wire.InputPort))
-                    else None
-                else None
-        let removeOption =
-            function
-            |Some x -> x
-            |None -> failwithf "can't happen"
-        List.map (isConnected) (allWires model)
-        |> List.filter (fun f -> f <> None) //removes None entries from list
-        |> List.map removeOption
+                    connectedWires
+                else
+                    if List.exists (fun x -> x = wiresSymbol1[index]) wiresSymbol2
+                    then 
+                        let newConnectedWires = List.append connectedWires [wiresSymbol1[index]]
+                        getConnectedWires newConnectedWires (index+1) symbol1 symbol2 model
+                    else 
+                    
+                        getConnectedWires connectedWires (index+1) symbol1 symbol2 model
