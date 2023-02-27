@@ -220,11 +220,29 @@ let reOrderPorts
         printfn $"PORT LIST: {ports}"
         
         let newPos = symbol.Pos + (getPortPos symbol port2)
-        
         let oldPos = symbol.Pos + (getPortPos symbol port1)
-        printfn $"New position: {newPos}"
+        let buffer = {
+            X = 
+                if newPos.X > oldPos.X
+                then 25.0
+                else 
+                    if newPos.X < oldPos.X
+                    then -25.0
+                    else 0
+            Y = 
+                if newPos.Y > oldPos.Y
+                then 25.0
+                else   
+                    if newPos.Y < oldPos.Y
+                    then -25.0
+                    else 0.0
+        }
+        let newPos' = newPos + buffer
+        
+        
+        printfn $"New position: {newPos'}"
         printfn $"Old position: {oldPos}"
-        SymbolUpdatePortHelpers.updatePortPos symbol newPos port1.Id
+        SymbolUpdatePortHelpers.updatePortPos symbol newPos' port1.Id
         
     let isInterconnected  (index) (symbol:Symbol) (fstWire,sndWire)=
         printfn $"Wire id first: {fstWire.WId}"
@@ -237,7 +255,7 @@ let reOrderPorts
         if lst.Length <> 1
         then 
             //is interconnected
-            
+            printfn "interconnected"
             let port1 = getPortFromWire sModel symbol fstWire
             printfn $"get port from wire {port1.Id}"
             let port2 = getPortFromWire sModel symbol sndWire
@@ -248,6 +266,7 @@ let reOrderPorts
             //true
         else 
             //is not interconnected
+            printfn "not inter"
             //false
         //    printfn "CHECKHERE"
             symbol
@@ -286,7 +305,15 @@ let reOrderPorts
                 
             else 
                 wireList
-                //index + 1
+
+        let changedIndex =
+            if newSymbol.PortMaps.Order <> symbol.PortMaps.Order
+            then 
+                0
+                
+            else 
+     
+                index + 1
         if (index < wirePairs.Length-1)//need to go down list: if is interconnected = true then swap occurs
         then 
             let newIndex = index + 1
