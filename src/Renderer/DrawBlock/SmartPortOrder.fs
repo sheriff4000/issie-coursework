@@ -21,7 +21,11 @@ open Operators
     Normally it will update multiple wires and symbols in the BusWire model so could use the SmartHelper 
     functions for this purpose.
 *)
-
+type BusWireHelpers = {
+    UpdateWire: BusWireT.Model -> Wire -> bool -> Wire
+    UpdateWires: BusWireT.Model -> List<ComponentId> -> XYPos -> BusWireT.Model
+    UpdateSymbolWires: BusWireT.Model -> ComponentId -> BusWireT.Model
+    }
 /// To test this, it must be given two symbols interconnected by wires. It then reorders the ports on
 /// symbolToOrder so that the connecting wires do not cross.
 /// Tt should work out the interconnecting wires (wiresToOrder) from 
@@ -80,6 +84,7 @@ let reOrderPorts
     (wModel: BusWireT.Model) 
     (symbolToOrder: Symbol) 
     (otherSymbol: Symbol)
+    (helpers: BusWireHelpers)
         : BusWireT.Model =
     printfn $"ReorderPorts: ToOrder:{symbolToOrder.Component.Label}, Other:{otherSymbol.Component.Label}"
     let sModel = wModel.Symbol
@@ -136,13 +141,32 @@ let reOrderPorts
                     compareSegments sndWire (newIndex) boolList seg
                 
         else 
-            if index = sndWire.Length - 2
+            if sndWire[index].Start.X <= seg.End.X
+            then 
+                let isTaller =
+              //      printfn $"HI {sndWire[index].Start.Y} AND {seg.Start.Y}"
+                    if sndWire[index].Start.Y > seg.Start.Y
+                    then true
+                    else false
+            //    printfn $"IS TALLER {isTaller}" 
+                let isTallerList = List.append boolList [isTaller]
+            //    printfn $"CHECK2 {isTallerList} "
+                if index = sndWire.Length - 2
                 then 
-            //        printfn "CHECKPOINT 5"
+          //          printfn "CHECKPOINT 3"
+                    isTallerList
+                else 
+                    let newIndex = index + 1
+                //    printfn $"HELLO THERE 3 {sndWire[newIndex].Start.Y} AND {seg.Start.Y}"
+                    compareSegments sndWire (newIndex) isTallerList seg
+            else 
+                if index = sndWire.Length - 2
+                then 
+                //    printfn "CHECKPOINT 4"
                     boolList
                 else 
                     let newIndex = index + 1
-             //       printfn $"HELLO THERE 5 {sndWire[newIndex].Start.Y} AND {seg.Start.Y}"
+         //           printfn $"HELLO THERE 4{sndWire[newIndex].Start.Y} AND {seg.Start.Y}"
                     compareSegments sndWire (newIndex) boolList seg
     //remove duplicate code in above function
 
@@ -251,11 +275,13 @@ let reOrderPorts
         let wirePairs = (getWirePairs wireList)//need to change to all connected wires
         printfn $"Wire PAIRS : {wirePairs}"
         let newSymbol = isInterconnected 0 symbol wirePairs[index]
+        printfn $"After: {newSymbol.PortMaps.Order}"
+        printfn $"Before: {symbol.PortMaps.Order}"
         let newWireList =
             if newSymbol <> symbol
             then 
                 printfn "REPEAT LOOP"
-                (updateSymbolWires ({wModel with Symbol = {sModel with Symbols = Map.add newSymbol.Id newSymbol sModel.Symbols}})  symbolToOrder.Id)
+                (helpers.UpdateSymbolWires ({wModel with Symbol = {sModel with Symbols = Map.add newSymbol.Id newSymbol sModel.Symbols}})  symbolToOrder.Id)
                 |> SmartHelpers.getConnectedWires [] 0 symbolToOrder otherSymbol
                 
             else 
@@ -294,7 +320,7 @@ let reOrderPorts
     //printfn $"changed : {changedWires.Wires}"
     //need to change wires so that they are also updated after symbol changes
     let symbol' = getAllInterconnected symbolToOrder 0 wires// no change at the moment
-    let changedWires = updateSymbolWires ({wModel with Symbol = {sModel with Symbols = Map.add symbol'.Id symbol' sModel.Symbols}})  symbolToOrder.Id
+    let changedWires = helpers.UpdateSymbolWires ({wModel with Symbol = {sModel with Symbols = Map.add symbol'.Id symbol' sModel.Symbols}})  symbolToOrder.Id
     // HLP23: This could be cleaned up using Optics - see SmartHelpers for examples
     {wModel with 
         Wires = changedWires.Wires//wModel.Wires // no change for now, but probably this function should use update wires after reordering.
