@@ -25,6 +25,12 @@ module node = Node.Api
 
 importReadUart
 
+
+let helpers:SmartPortOrder.BusWireHelpers = {
+    UpdateWire = BusWireUpdate.updateWire
+    UpdateWires = BusWireUpdate.updateWires
+    UpdateSymbolWires = BusWireUpdate.updateSymbolWires
+}
 /// Update Function
 let update (msg : Msg) (model : Model): Model*Cmd<Msg> =
     /// check things that might not have been correctly completed in the last update and if so do them
@@ -744,7 +750,7 @@ let update (msg : Msg) (model : Model): Model*Cmd<Msg> =
          validateTwoSelectedSymbols model
          |> function
             | Some (s1,s2) ->
-                {model with Wire = SmartPortOrder.reOrderPorts model.Wire s1 s2}, Cmd.none
+                {model with Wire = SmartPortOrder.reOrderPorts model.Wire s1 s2 helpers}, Cmd.none
             | None -> 
                 printfn "Error: can't validate the two symbols selected to reorder ports"
                 model, Cmd.none

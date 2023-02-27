@@ -10,6 +10,7 @@ open BusWireUpdateHelpers
 open SmartWire
 open Optics
 open Operators
+open SmartPortOrder
 
 //---------------------------------------------------------------------------------//
 //----------------------Helper functions that need SmartRoute etc------------------//
