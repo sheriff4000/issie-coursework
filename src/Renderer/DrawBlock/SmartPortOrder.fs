@@ -342,16 +342,50 @@ let reOrderPorts
     let wires: Wire List = SmartHelpers.getConnectedWires initialList initialIndex symbolToOrder otherSymbol wModel    
         
     printfn $"CHECK wire list : {wires}"
-
+    let isInterconnected2 (fstWire,sndWire)=
+        printfn $"Wire id first: {fstWire.WId}"
+        let fstWireAseg = BusWire.getAbsSegments fstWire
+        let sndWireAseg = BusWire.getAbsSegments sndWire
+        let lst = List.collect (compareSegments sndWireAseg 0 []) fstWireAseg
+                             |> List.distinct
+                                
+        printfn $"list of segments: {lst}"
+        if lst.Length <> 1
+        then 
+            //is interconnected
+            printfn "interconnected"
+            true
+        else 
+            printfn "not interconnected"
+            false
+    let anyInterconnected (wire: Wire List)=
+        wire
+        |> getWirePairs
+        |> List.map isInterconnected2
+        |> List.exists (fun x -> x = true)
+    
     
     //printfn $"changed : {changedWires.Wires}"
     //need to change wires so that they are also updated after symbol changes
     let symbol' = getAllInterconnected symbolToOrder 0 wires// no change at the moment
+    
     let changedWires = helpers.UpdateSymbolWires ({wModel with Symbol = {sModel with Symbols = Map.add symbol'.Id symbol' sModel.Symbols}})  symbolToOrder.Id
+    let tempModel = {wModel with 
+                            Wires = changedWires.Wires//wModel.Wires // no change for now, but probably this function should use update wires after reordering.
+                                                 // to make that happen the tyest function which calls this would need to provide an updateWire
+                                                 // function to this as a parameter (as was done in Tick3)
+                            Symbol = {sModel with Symbols = Map.add symbol'.Id symbol' sModel.Symbols}
+    }
+    let connectedWires' = SmartHelpers.getConnectedWires [] 0 symbol' otherSymbol tempModel
+    let changeSymbol = 
+        match anyInterconnected wires with
+        | true -> getAllInterconnected symbol' 0 wires
+        | false -> symbol'
+    let newChangedWires = helpers.UpdateSymbolWires ({wModel with Symbol = {sModel with Symbols = Map.add symbol'.Id symbol' sModel.Symbols}})  symbolToOrder.Id
     // HLP23: This could be cleaned up using Optics - see SmartHelpers for examples
     {wModel with 
-        Wires = changedWires.Wires//wModel.Wires // no change for now, but probably this function should use update wires after reordering.
+        Wires = newChangedWires.Wires//wModel.Wires // no change for now, but probably this function should use update wires after reordering.
                              // to make that happen the tyest function which calls this would need to provide an updateWire
                              // function to this as a parameter (as was done in Tick3)
-        Symbol = {sModel with Symbols = Map.add symbol'.Id symbol' sModel.Symbols}
+        Symbol = {sModel with Symbols = Map.add changeSymbol.Id changeSymbol sModel.Symbols}
     }
