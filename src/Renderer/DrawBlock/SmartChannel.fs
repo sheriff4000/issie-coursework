@@ -20,15 +20,21 @@ open Operators
     Normally it will update multiple wires in the BusWire model so could use the SmartHelper function for
     this purpose.
 *)
-type BoxSides = {
+
+type BoxSides = { 
+//defines the left x coordinate, right x coordinate, top y coordinate, bottom y coordinate of a bounding box.
         Left: float;
         Right: float;
         Top: float;
         Bottom: float
     }
+
+
 type MovementDirection = Left | Right 
 
+
 let getSidesOfChannel (channel: BoundingBox) = 
+    //takes a bounding box and returns a BoxSides record 
     let right = channel.TopLeft.X + channel.W
     let top = channel.TopLeft.Y
     let left = channel.TopLeft.X
@@ -39,15 +45,12 @@ let getSidesOfChannel (channel: BoundingBox) =
         Bottom = bottom; 
         Right = right
     }
-    
-
-let print x = 
-    printfn "%A" x
-
-let getXOfVerticalSegmentWire (wire: Wire) = //used for checkWireInChannel
+// ----------------------------  THESE FUNCTIONS ARE TO BE USED FOR WIRES WITH 7 SEGMENTS ---------------------------   
+let getXOfVerticalSegmentWire (wire: Wire) = 
     wire.StartPos.X + wire.Segments[0].Length + wire.Segments[2].Length
 
-let getYOfVerticalSegmentWire (wire: Wire) = //used for checkWireInChannel
+let getYOfVerticalSegmentWire (wire: Wire) = 
+    
     wire.StartPos.Y, (wire.StartPos.Y + wire.Segments[3].Length)
 
 let getXOfLeftHorizontalSegmentWire (wire: Wire) = 
@@ -61,9 +64,10 @@ let getXOfRightHorizontalSegmentWire (wire: Wire) =
 
 let getYOfRightHorizontalSegmentWire (wire: Wire) = 
     wire.StartPos.Y + wire.Segments[1].Length + wire.Segments[3].Length
+//  ----------------------------------------------------------------------------------------------------------------------------
 
 let moveVerticalSegment (segments: List<Segment>) (amount: float) (direction: MovementDirection) = 
-    //moves middle segment to the left for negative amount and to the right for positive amount
+    //moves middle vertical segment of a 7 segment wire. Moves to the left when amount is negative, and to the right when amount is positive.
     let totalAvailableLength = segments[2].Length + segments[4].Length
     let possibleRightLength = max 0.0 (segments[4].Length - amount)
     let possibleLeftLength = max 0.0 (segments[2].Length - amount)
@@ -71,8 +75,8 @@ let moveVerticalSegment (segments: List<Segment>) (amount: float) (direction: Mo
     | Left -> segments |> List.mapi (fun i x -> if i = 2 then {x with Length=possibleLeftLength} else if i = 4 then {x with Length=totalAvailableLength - possibleLeftLength} else x)
     | Right -> segments |> List.mapi (fun i x -> if i = 2 then {x with Length=totalAvailableLength - possibleRightLength} else if i = 4 then {x with Length=possibleRightLength} else x)
 
-   
-let moveWireVerticalSegment (xCoordinate: float) (wire: Wire) = //moves middle segment of wire so that it is either the xcoordinate or as close as possible to it
+let moveWireVerticalSegment (xCoordinate: float) (wire: Wire) = 
+    //moves middle vertical segment of wire so that it is at either the xcoordinate given or as close as possible to it if impossible
     (xCoordinate - (getXOfVerticalSegmentWire wire))
     |> function
         | x when x < 0 -> {wire with Segments = moveVerticalSegment wire.Segments (-x) Left}
@@ -87,9 +91,6 @@ let moveWireHorizontalSegment (yCoordinate: float) (wire: Wire) =
     let amount = yCoordinate - (wire.StartPos.Y + wire.Segments[3].Length)
     {wire with Segments = moveHorizontalSegment wire.Segments amount}
     
-    
-
-
 let checkHorizontalWireInChannel (channel: BoundingBox) (wire: Wire) =
     let boxSides = getSidesOfChannel channel
     //check whether the x values are valid
@@ -257,45 +258,25 @@ let improveWireOrder (channel: BoundingBox) (wireSpacings: list<float>) (wires: 
     let rec wireSwapper (sortedIdsInChannel: list<ConnectionId>)(wiresAlreadyDone: Set<ConnectionId*ConnectionId>) (wiresToSwap: list<ConnectionId * ConnectionId>) = 
         let actualWireSpacings = getActualWireSpacings wires wireSpacings sortedIdsInChannel
         if List.length wiresToSwap > 0 then
-            print "id's being swapped are:"
-            print wiresToSwap
-            print "id's already swapped are:"
-            print wiresAlreadyDone
             let hd::tl = wiresToSwap
             let leftId, rightId = hd
             let oldMinimum = getMinimumSpacing actualWireSpacings
             let leftIndex = List.findIndex (fun x -> x = leftId) sortedIdsInChannel
             let rightIndex = List.findIndex (fun x -> x = rightId) sortedIdsInChannel
-            print "oldie"
-            print sortedIdsInChannel
             let newSortedIdsInChannel = 
                 sortedIdsInChannel 
                 |> List.mapi (fun i id -> if i = leftIndex then rightId elif i = rightIndex then leftId else id)
-            print "newie"
-            print newSortedIdsInChannel
             let possibleNewWireSpacings = getActualWireSpacings wires wireSpacings newSortedIdsInChannel
-            print "oldieSpacings:"
-            print actualWireSpacings
-            print "newieSpacings:"
-            print possibleNewWireSpacings
             let newMinimum = getMinimumSpacing possibleNewWireSpacings
-            print "oldie minimum:"
-            print oldMinimum
-            print "newie average:"
-            print newMinimum
             if newMinimum > oldMinimum then
-                print "YAY"
                 wireSwapper newSortedIdsInChannel (wiresAlreadyDone.Add((leftId, rightId)).Add((rightId, leftId))) tl 
             else 
                 wireSwapper sortedIdsInChannel (wiresAlreadyDone.Add(leftId, rightId).Add(rightId, leftId)) tl 
 
         else
-            print "looking for wires to swap. They are:"
             let wiresToSwap = checkWiresSufficientlySpaced channel actualWireSpacings
-            print wiresToSwap
             match wiresToSwap with
                 | None -> 
-                    print "no wires to swap -> returning";
                     sortedIdsInChannel
                 | Some x -> 
                     let actualWiresToSwap = 
@@ -303,10 +284,8 @@ let improveWireOrder (channel: BoundingBox) (wireSpacings: list<float>) (wires: 
                         |> List.map (fun (x,y) -> (sortedIdsInChannel[x], sortedIdsInChannel[y]))
                         |> List.filter (fun (x,y) -> not(Set.contains (x,y) wiresAlreadyDone ));
                     if List.length actualWiresToSwap < 1 then
-                        print "all wires you wanted to swap have already been swapped -> returning"
                         sortedIdsInChannel
                     else
-                        print "there are wires to swap that haven't been swapped yet. swapping them now"
                         wireSwapper sortedIdsInChannel wiresAlreadyDone actualWiresToSwap
            
     wireSwapper sortedIdsInChannel Set.empty [] 
@@ -318,28 +297,14 @@ let smartChannelRoute //spaces wires evenly
         (channel: BoundingBox) 
         (model:Model) 
             :Model =
-
-    /// what to do now:
-    /// 1. function which turns wire spacings into actual wire spacings based on constraints from the wires (done)
-    /// 2. function which checks if the actual wire spacings aren't good enough 
-    /// 3. function which swaps the order of two wires 
-    /// 4. Create some sort of recursive function which keeps improving the order of wires until it's optimal
-    ///     this should get you to 10pm -> then, create a new plan for an improvement.
-    
-    // 8. Make the things that could be helper functions helper functions
-    // 9. Work on fixing when the channels aren't spread properly (find two wires which are very close to each other and swap them then re-space)
-    // 10. make everything neat and tidy
-    
+            
     let wireIdsInChannel = getWiresInChannel channelOrientation model.Wires channel 
     let straightenedModel = straightenHorizontalWires channelOrientation model wireIdsInChannel channel
     let sortedIdsInChannel = orderWires channelOrientation straightenedModel.Wires wireIdsInChannel
     let wireSpacings = wireSpacer channelOrientation channel sortedIdsInChannel
-    print "number of wires in channel:"
-    print (List.length wireIdsInChannel)
-   
+
     if channelOrientation = Vertical then
         let newOrder = improveWireOrder channel wireSpacings straightenedModel.Wires sortedIdsInChannel
         {straightenedModel with Wires = moveWires channelOrientation straightenedModel.Wires wireSpacings newOrder}
     else    
         {straightenedModel with Wires = moveWires channelOrientation straightenedModel.Wires wireSpacings sortedIdsInChannel}
-    
