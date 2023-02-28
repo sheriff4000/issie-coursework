@@ -15,8 +15,9 @@ type LineSeg =
         start: XYPos
         finish: XYPos
     }
-    member this.length = (this.finish.X-this.start.X) + (this.finish.Y-this.start.Y)
-
+    // since only either horizontal or vertical, can add differences
+    member this.length = (this.finish.X-this.start.X) + (this.finish.Y-this.start.Y)  
+/// used in preference to boundingBox as it can be easier for intersect detections
 type boxLines =
     {
         top: LineSeg
@@ -26,18 +27,43 @@ type boxLines =
         W: float
         H: float
     }
-
-//type IntersectType = Top | Bottom | Left | Right
 type AddSegType = Previous | Next | Both | Neither
 
+/// further work: consider adding attributes inType: Edge and outType: Edge to enable special routing 
+/// for different types of intersects
 type Intersect = {
     box: boxLines
     line: LineSeg 
     intersectType: Edge
     position: XYPos
     }
+
 let wireOffset = 10.
 
+/// -----------------------------------------------------------------------
+/// these functions convert between my boxLines and the more widely used boundingBox,
+/// allowing the sharing of functions between the two
+let boundingBoxToBoxLines (box: BoundingBox) = 
+    let topRight = {Y = box.TopLeft.Y; X = box.TopLeft.X + box.W}
+    let botLeft = {X = box.TopLeft.X; Y = box.TopLeft.Y+box.H}
+    let botRight = {X = box.TopLeft.X + box.W; Y = box.TopLeft.Y+box.H}
+    let topLeft = box.TopLeft
+
+    {top = {start = topLeft; finish = topRight}; 
+        bottom = {start = botLeft; finish = botRight}; 
+        left = {start = topLeft; finish = botLeft}; 
+        right = {start = topRight; finish = botRight};
+        H = botLeft.Y - topLeft.Y;
+        W = topRight.X - topLeft.X
+    }
+
+let boxLinesToBoundingBox (box: boxLines) = 
+    {TopLeft = box.top.start;
+    H = box.left.finish.Y-box.left.start.Y;
+    W = box.top.finish.X - box.top.start.X}
+/// -------------------------------------------------------------------------
+
+///this function converts a component to the boxLines format 
 let ComponentToBox (comp: Component) =
     let topLeft = {X = comp.X; Y = comp.Y}
     let topRight = {X = comp.X + comp.W; Y = comp.Y}
@@ -52,12 +78,12 @@ let ComponentToBox (comp: Component) =
     let outBox = {top = t; bottom = b; left = l; right = r; W = comp.W; H = comp.H}
     outBox
 
+/// this is a variant of the boxUnion function, opting to have the second parameter as a list of boxes, finding the union of the whole set
 let unionBoxLines (box1: boxLines) (newBoxes: boxLines list) = 
     let maxLeft = List.max (box1.left.start.X::(List.map (fun x -> x.left.start.X) newBoxes))
     let maxRight = List.max ((box1.top.finish.X::(List.map (fun x -> x.top.finish.X) newBoxes)))
     let maxTop = List.max (box1.top.start.Y::(List.map (fun x -> x.top.start.Y) newBoxes))
     let maxBot = List.max (box1.bottom.start.Y::(List.map (fun x -> x.bottom.start.Y) newBoxes))
-
     let topLeft = {X = maxLeft; Y = maxTop}
     let botLeft = {X = maxLeft; Y = maxBot}
     let topRight = {X = maxRight; Y = maxTop}
@@ -80,7 +106,7 @@ let WireToLineSegs (wire: Wire) =
     //|> List.filter (fun (idx,_) -> idx = 0 )
     |> Map.ofList
 
-
+///finds the intersection between two lineSegs if it exists -> could be made more accessible to others in group phase
 let LineSegIntersect (l1: LineSeg) (l2: LineSeg) : XYPos Option = 
     let dx1 = l1.finish.X - l1.start.X 
     let dy1 = l1.finish.Y - l1.start.Y
@@ -100,25 +126,7 @@ let LineSegIntersect (l1: LineSeg) (l2: LineSeg) : XYPos Option =
         else
             None
 
-let boundingToLines (box: BoundingBox) = 
-    let topRight = {Y = box.TopLeft.Y; X = box.TopLeft.X + box.W}
-    let botLeft = {X = box.TopLeft.X; Y = box.TopLeft.Y+box.H}
-    let botRight = {X = box.TopLeft.X + box.W; Y = box.TopLeft.Y+box.H}
-    let topLeft = box.TopLeft
-
-    {top = {start = topLeft; finish = topRight}; 
-        bottom = {start = botLeft; finish = botRight}; 
-        left = {start = topLeft; finish = botLeft}; 
-        right = {start = topRight; finish = botRight};
-        H = botLeft.Y - topLeft.Y;
-        W = topRight.X - topLeft.X
-    }
-
-let linesToBounding (box: boxLines) = 
-    {TopLeft = box.top.start;
-    H = box.left.finish.Y-box.left.start.Y;
-    W = box.top.finish.X - box.top.start.X}
-
+/// calculates the distance a wire needs to move in order to avoid it
 let LineMove (box: BoundingBox) (line: LineSeg) =
     let distToCentre = segmentIntersectsBoundingBox box line.start line.finish
     if  Option.isNone distToCentre then
@@ -137,6 +145,10 @@ let LineMove (box: BoundingBox) (line: LineSeg) =
                 else 
                     (box.TopLeft.X + box.W + wireOffset) - box.Centre().X - dist
 
+/// finds the intersection positions between a line segent and a box
+/// note that only either (top or bottom) or (left or right) are needed
+/// this is because the current version of the algorithm would do the same thing 
+/// for left and right or top and bottom
 let SegBoxIntersect (box: boxLines) (line: LineSeg) = 
     let topIntersect = LineSegIntersect box.top line
     let leftIntersect = LineSegIntersect box.left line
@@ -161,11 +173,10 @@ let SegBoxIntersect (box: boxLines) (line: LineSeg) =
 let getSegPositions wire idx = 
     let segMap = WireToLineSegs wire
     let segPositions = segMap[idx]
-
     segPositions.start, segPositions.finish
 
-
-
+/// This function replaces a wire Segment with either 1, 3 or 5 segments dependent on the addType,
+/// with the intention of making an otherwise immovable segment movable
 let addFakeSegs (addType: AddSegType) (wire: Wire) (idx: int) (intersect: Intersect) = 
     let initStart, initFinish = getSegPositions wire idx
     let segments = wire.Segments
@@ -208,7 +219,6 @@ let addFakeSegs (addType: AddSegType) (wire: Wire) (idx: int) (intersect: Inters
             boxSegLen + nextLen
         else 
             prevLen + boxSegLen
-
 
     let defaultSeg = {segments[idx-1] with Length = 0.; Mode = Auto}
     let newSegs = 
@@ -293,7 +303,7 @@ let smartAutoroute (model: Model) (wire: Wire): Wire =
         let segIndex = 
             Map.tryFindKey (fun _ l -> l = intersect.line) segMap
             |> Option.defaultValue 0
-        printfn $"intersection at {intersect.intersectType} of component, segment = {segIndex}, linemove would be {LineMove (linesToBounding intersect.box) intersect.line}"
+        printfn $"intersection at {intersect.intersectType} of component, segment = {segIndex}, linemove would be {LineMove (boxLinesToBoundingBox intersect.box) intersect.line}"
 
     initIntersects
     |> List.map intersectPrinter
@@ -313,7 +323,7 @@ let smartAutoroute (model: Model) (wire: Wire): Wire =
                         Map.tryFindKey (fun _ l -> l = intersect.line) segMap
                         |> Option.defaultValue 0 //Shouldn't happen
                     //let dist = LineMove intersect.intersectType intersect.position intersect.box
-                    let dist = LineMove (linesToBounding intersect.box) intersect.line
+                    let dist = LineMove (boxLinesToBoundingBox intersect.box) intersect.line
 
                     let addType = 
                         if not contradiction then
