@@ -200,8 +200,6 @@ let addFakeSegs (addType: AddSegType) (wire: Wire) (idx: int) (intersect: Inters
     let totalLen = segments[idx].Length
     let vertIntersect = intersect.intersectType = Top || intersect.intersectType = Bottom
 
-    
-
     let prevLen, nextLen =
         if vertIntersect then
             let startToBottom = intersect.box.bottom.start.Y+wireOffset-initStart.Y
@@ -246,7 +244,7 @@ let addFakeSegs (addType: AddSegType) (wire: Wire) (idx: int) (intersect: Inters
             segments[..(idx-1)] 
             @ if (addType = Previous || addType = Both) then [{defaultSeg with Length = prevLen}] @ [defaultSeg] else []
             @ [{segments[idx] with Length = midLen}] 
-            @ [defaultSeg] @ [{defaultSeg with Length = prevLen}]
+            @ if (addType = Next || addType = Both) then [defaultSeg] @ [{defaultSeg with Length = nextLen}] else []
             @ segments[(idx+1)..]
         else
             segments
