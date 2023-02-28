@@ -225,6 +225,7 @@ let updatePortPos (sym:Symbol) (pos:XYPos) (portId: string) : Symbol =
                 else if edge = oldEdge && oldIdx < newPortIdx then newPortIdx - 1
                 else newPortIdx
             printfn $"{(newPortIdx, newPortIdx')}"
+            printfn $"old index {oldIdx}"
             
             let newPortOrder = 
                 oldPortOrder'
