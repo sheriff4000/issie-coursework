@@ -88,119 +88,61 @@ let reOrderPorts
         : BusWireT.Model =
     printfn $"ReorderPorts: ToOrder:{symbolToOrder.Component.Label}, Other:{otherSymbol.Component.Label}"
     let sModel = wModel.Symbol
-    
-  
-    
-   // printfn $"Connected wires: {SmartHelpers.connectingWires symbolToOrder otherSymbol wModel}"
 
-    
-
-    let firstElement (first,second,third) = 
-        first
-    
-   // let isInterconnected (wire, firstPortID, secondPortId) =
-      //  let edge = symbolToOrder.PortMaps.Orientation[firstPortID]
-        //let lst = symbolToOrder.PortMaps.Order[edge]
-       // lst
-    
-    //printfn $"interconnected: {(BusWire.logIntersectionMaps wModel).Wires}"
     let rec compareSegments (sndWire: ASegment list) index (boolList: bool list) (seg:ASegment)=
-    //    let print x=
-      //      printfn $"HOLA {x} index {index}"
-      //  printfn $"HOLA {boolList}"
-      //  List.map print sndWire |> ignore
         if sndWire[index].Start.X >= seg.Start.X
         then 
-          //#  printfn "CHECK"
             if sndWire[index].Start.X <= seg.End.X
             then 
                 let isTaller =
-              //      printfn $"HI {sndWire[index].Start.Y} AND {seg.Start.Y}"
                     if sndWire[index].Start.Y > seg.Start.Y
                     then true
                     else false
-            //    printfn $"IS TALLER {isTaller}" 
                 let isTallerList = List.append boolList [isTaller]
-            //    printfn $"CHECK2 {isTallerList} "
                 if index = sndWire.Length - 2
                 then 
-          //          printfn "CHECKPOINT 3"
                     isTallerList
                 else 
                     let newIndex = index + 1
-                //    printfn $"HELLO THERE 3 {sndWire[newIndex].Start.Y} AND {seg.Start.Y}"
                     compareSegments sndWire (newIndex) isTallerList seg
             else 
                 if index = sndWire.Length - 2
                 then 
-                //    printfn "CHECKPOINT 4"
                     boolList
                 else 
                     let newIndex = index + 1
-         //           printfn $"HELLO THERE 4{sndWire[newIndex].Start.Y} AND {seg.Start.Y}"
                     compareSegments sndWire (newIndex) boolList seg
                 
         else 
             if sndWire[index].Start.X <= seg.End.X
             then 
                 let isTaller =
-              //      printfn $"HI {sndWire[index].Start.Y} AND {seg.Start.Y}"
                     if sndWire[index].Start.Y > seg.Start.Y
                     then true
                     else false
-            //    printfn $"IS TALLER {isTaller}" 
                 let isTallerList = List.append boolList [isTaller]
-            //    printfn $"CHECK2 {isTallerList} "
                 if index = sndWire.Length - 2
                 then 
-          //          printfn "CHECKPOINT 3"
                     isTallerList
                 else 
                     let newIndex = index + 1
-                //    printfn $"HELLO THERE 3 {sndWire[newIndex].Start.Y} AND {seg.Start.Y}"
                     compareSegments sndWire (newIndex) isTallerList seg
             else 
                 if index = sndWire.Length - 2
                 then 
-                //    printfn "CHECKPOINT 4"
                     boolList
                 else 
                     let newIndex = index + 1
-         //           printfn $"HELLO THERE 4{sndWire[newIndex].Start.Y} AND {seg.Start.Y}"
                     compareSegments sndWire (newIndex) boolList seg
     //remove duplicate code in above function
 
-        //input = list of wires, output = list of tuple of wires that are interconnected?
-    //if interconnected update port - swap port indexes?
-    //swap ports then recheck list then swap ports again (might take a lot of time)
-    //alternative is to just match port indexes but that might not work
-    //need to write a function that changes a ports index on a symbol
-    //input = the initial port index and the ideal port index
-
-    //go through the ports in the order of their index
-    //use a map to identify what wire they are connected to
-    //compare that wire to each wire in the wire list and check if intersecting
-    //if intersecting then that port at that index should swap positions with the other port (update port with their xy pos)
-
-    //make a function that maps every wire to a port?? Portmap??
-    //functions: getPortPos returns x y of port
-    //assign wire to a port
-    //input and output ports which ports are on symbol
-    //need to make a map of port id and wire - given a wire it returns the port id/returns the port? then getPortPos
-    //then update port position of first port to be = to second port
-
-    //function that gets port on specific symbol from wire
-    //input = wire, symbol
-    //output = port
-    //Symbol.getPort function input = PortId
-    //for each wire check input and output port Id and match with port on symbol
     let getPortFromWire (model: SymbolT.Model)(symbol:Symbol) (wire:Wire)=
         let inputPort = Symbol.getInputPortIdStr (wire.InputPort)
         let outputPort = Symbol.getOutputPortIdStr (wire.OutputPort)
         //to check if input or output port on symbol, go through each side of symbol and check if input id is present
         let ports edge = symbol.PortMaps.Order[edge]
         let allPortsOnSymbol = List.collect ports [Left; Right; Top; Bottom]
-
+        printfn $"allPorts on symbol {allPortsOnSymbol}"
         if List.exists (fun x -> if x = inputPort then true else false) allPortsOnSymbol
         then 
             printfn $"HEY THERE ALEERA"
@@ -209,10 +151,10 @@ let reOrderPorts
         else 
             printfn $"GOODBYE ALEERA"
             printfn $"What was input {inputPort}"
+            printfn $"What was input {outputPort}"
             printfn $"Wire id {wire.WId}"
             Symbol.getPort model outputPort
-    //input = symbol, port1, port2, output = new symbol
-    //test if this function works
+
     let swapPorts (symbol:Symbol) (port1:Port) (port2:Port) =
         printfn $"CHECK ALEERA {port2.Id}"
         printfn $"CHECK ALEERA {port1.Id}"
@@ -267,8 +209,6 @@ let reOrderPorts
         else 
             //is not interconnected
             printfn "not inter"
-            //false
-        //    printfn "CHECKHERE"
             symbol
 
 //input = all wires connected between the two relevant symbols 
@@ -353,63 +293,69 @@ let reOrderPorts
         |> List.map isInterconnected2
         |> List.exists (fun x -> x = true)
 
-    let anyInterconnected' (symbol1:Symbol) (symbol2:Symbol) (wire: Wire) = 
-        let port1Pos = SmartHelpers.getPortPositionFromLeft symbol1 wire
-        let port2Pos = SmartHelpers.getPortPositionFromLeft symbol2 wire
+    //input each wire from connected wire list
+    let anyInterconnected' (symbol1:Symbol) (symbol2:Symbol)  (model: SymbolT.Model) (wire: Wire)=
+        let port1Pos  =  
+                let port1 = (getPortFromWire model symbol1 wire)
+                printfn "hello arrived"
+                SymbolUpdatePortHelpers.getPosIndex symbol1 (getPortPos symbol1 port1) (symbol1.PortMaps.Orientation[port1.Id])
+        printfn "MADE PORT1 POS"
+        let port2Pos = 
+                let port2 = (getPortFromWire model symbol2 wire)
+                printfn "hello arrived 2"
+                SymbolUpdatePortHelpers.getPosIndex symbol2 (getPortPos symbol2 port2) (symbol2.PortMaps.Orientation[port2.Id])
+        printfn "MADE PORT2 POS"
         port1Pos, port2Pos
 
-    let checkPortPositions (wire:Wire List) =
+
+    let checkPortPositions (wire:Wire List) (symbol1: Symbol) (model:DrawModelType.SymbolT.Model)=
         let secondSymbolList = 
             wire
-            |> List.map (anyInterconnected' symbolToOrder otherSymbol)
+            |> List.map (anyInterconnected' symbol1 otherSymbol model)
             |> List.sort
             |> List.unzip
             |> (fun (x,y) -> y)
         printfn $"check port positions{wire
-            |> List.map (anyInterconnected' symbolToOrder otherSymbol)}"
+            |> List.map (anyInterconnected' symbol1 otherSymbol model)}"
         printfn $"check after sorted { wire
-            |> List.map (anyInterconnected' symbolToOrder otherSymbol)
+            |> List.map (anyInterconnected' symbol1 otherSymbol model)
             |> List.sort}"
-        if (List.sort secondSymbolList) = secondSymbolList
+        printfn $"SECOND SYMBOL LIST {secondSymbolList}"
+        printfn $"SECOND SYMBOL LIST SORTED {List.sortDescending secondSymbolList}"
+        if (List.sortDescending secondSymbolList) = secondSymbolList
         then 
             //no interconnections
             false
         else
             true
             //interconnections
-        //0
-        //needs to get input port index and output port index
-        //repeat of function used previously
+
     
     let rec changeSymbol (symbol:Symbol) (symbolWires:Wire List) (index:int) = 
-        let newSymbol = getAllInterconnected symbol 0 symbolWires
-        let changedWires = (helpers.UpdateSymbolWires ({wModel with Symbol = {sModel with Symbols = Map.add newSymbol.Id newSymbol sModel.Symbols}})  newSymbol.Id)
-                           |> SmartHelpers.getConnectedWires [] 0 symbolToOrder otherSymbol
-        if index > 10//checkPortPositions changedWires = false //timeout if there are no possible solutions with the current symbol positioning
-        then 
-            newSymbol
-        else 
-            if checkPortPositions changedWires = false
+        
+            if index > 200//checkPortPositions changedWires = false //timeout if there are no possible solutions with the current symbol positioning
             then 
-                if anyInterconnected changedWires = true
-                then 
-                    let newIndex = index + 1
-                    changeSymbol newSymbol changedWires newIndex
-                else newSymbol
-            else
-                if anyInterconnected changedWires = true
-                then 
-                    let newIndex = index + 1
-                    changeSymbol newSymbol changedWires newIndex
-                else newSymbol
-    
+                  symbol
+            else 
+                if anyInterconnected wires = true
+                    then
+                        if checkPortPositions wires symbol (helpers.UpdateSymbolWires ({wModel with Symbol = {sModel with Symbols = Map.add symbol.Id symbol sModel.Symbols}})  symbol.Id).Symbol= false
+                            then
+                                symbol
+                            else
+                        let newSymbol = getAllInterconnected symbol 0 symbolWires
+                        let changedWires = (helpers.UpdateSymbolWires ({wModel with Symbol = {sModel with Symbols = Map.add newSymbol.Id newSymbol sModel.Symbols}})  newSymbol.Id)
+                                         |> SmartHelpers.getConnectedWires [] 0 symbolToOrder otherSymbol
+                        let newIndex = index + 1
+                        changeSymbol newSymbol changedWires newIndex
+                    else 
+                        symbol
+   
     let finalSymbol = changeSymbol symbolToOrder wires 0
     let changeWires = (helpers.UpdateSymbolWires ({wModel with Symbol = {sModel with Symbols = Map.add finalSymbol.Id finalSymbol sModel.Symbols}})  finalSymbol.Id)
                            |> SmartHelpers.getConnectedWires [] 0 symbolToOrder otherSymbol
 
-            
-    //printfn $"changed : {changedWires.Wires}"
-    //need to change wires so that they are also updated after symbol changes
+     
     let symbol' = getAllInterconnected symbolToOrder 0 wires// no change at the moment
     
     let changedWires = helpers.UpdateSymbolWires ({wModel with Symbol = {sModel with Symbols = Map.add symbol'.Id symbol' sModel.Symbols}})  symbolToOrder.Id
@@ -425,13 +371,7 @@ let reOrderPorts
         | true -> getAllInterconnected symbol' 0 wires
         | false -> symbol'
     let newChangedWires = helpers.UpdateSymbolWires ({wModel with Symbol = {sModel with Symbols = Map.add symbol'.Id symbol' sModel.Symbols}})  symbolToOrder.Id
-    // HLP23: This could be cleaned up using Optics - see SmartHelpers for examples
-    (*{wModel with 
-        Wires = changedWires.Wires//wModel.Wires // no change for now, but probably this function should use update wires after reordering.
-                             // to make that happen the tyest function which calls this would need to provide an updateWire
-                             // function to this as a parameter (as was done in Tick3)
-        Symbol = {sModel with Symbols = Map.add symbol'.Id symbol' sModel.Symbols}
-    }*)
+
 
     {wModel with 
         Wires = newChangedWires.Wires//wModel.Wires // no change for now, but probably this function should use update wires after reordering.
