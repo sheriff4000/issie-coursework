@@ -52,11 +52,11 @@ let ComponentToBox (comp: Component) =
     let outBox = {top = t; bottom = b; left = l; right = r; W = comp.W; H = comp.H}
     outBox
 
-let unionBoxLines (box1: boxLines) (box2: boxLines) = 
-    let maxLeft = max box1.left.start.X box2.left.start.X
-    let maxRight = max box1.top.finish.X box2.top.finish.X
-    let maxTop = max box1.top.start.Y box2.top.start.Y
-    let maxBot = max box1.bottom.start.Y box2.bottom.start.Y
+let unionBoxLines (box1: boxLines) (newBoxes: boxLines list) = 
+    let maxLeft = List.max (box1.left.start.X::(List.map (fun x -> x.left.start.X) newBoxes))
+    let maxRight = List.max ((box1.top.finish.X::(List.map (fun x -> x.top.finish.X) newBoxes)))
+    let maxTop = List.max (box1.top.start.Y::(List.map (fun x -> x.top.start.Y) newBoxes))
+    let maxBot = List.max (box1.bottom.start.Y::(List.map (fun x -> x.bottom.start.Y) newBoxes))
 
     let topLeft = {X = maxLeft; Y = maxTop}
     let botLeft = {X = maxLeft; Y = maxBot}
@@ -156,8 +156,6 @@ let SegBoxIntersect (box: boxLines) (line: LineSeg) =
             [(Right, (Option.get rightIntersect))]
         else
             []
-    // elif Option.isSome rightIntersect then
-        // (Right, rightIntersect)
     topOut @ leftOut
 
 let getSegPositions wire idx = 
@@ -344,8 +342,8 @@ let smartAutoroute (model: Model) (wire: Wire): Wire =
                             printfn $"alpha contradiction with intersect {newIntersects[0].intersectType}" |> ignore
                             let unionBox = 
                                 //if (List.length newIntersects = 1) && (List.length oldIntersects = 1) then
-                                if not (List.isEmpty newIntersects) && (newIntersects[0].box <> intersect.box) then  //&& not (List.isEmpty oldIntersects) then
-                                    Some (unionBoxLines newIntersects[0].box intersect.box)
+                                if not (List.isEmpty newIntersects) then  //&& not (List.isEmpty oldIntersects) then
+                                    Some (unionBoxLines intersect.box (List.map (fun x->x.box ) newIntersects))
                                 else
                                     None
                             if Option.isSome unionBox then
