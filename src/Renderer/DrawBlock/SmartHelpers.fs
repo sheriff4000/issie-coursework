@@ -130,6 +130,13 @@ let getInputPortIds
     List.map (fun (x:Port) -> x.Id) symbol.Component.InputPorts
 
 // HLP23: Luke
+// This function returns a list of the IDs of all the output ports of a symbol
+let getOutputPortIds
+    (symbol: Symbol)
+    : string list =
+    List.map (fun (x:Port) -> x.Id) symbol.Component.OutputPorts
+
+// HLP23: Luke
 // This function returns whether a wire is inputted into a symbol
 let isSymbolInputForWire
     (symbol: Symbol)
@@ -140,22 +147,41 @@ let isSymbolInputForWire
     |> List.contains (string wire.InputPort)
 
 // HLP23: Luke
-// This function get the minimum distance between horizontal ports of a symbol
-let getPortDistancesH
-    (symbol: Symbol)
-    : float =
-    let maxPortNumber =
-        symbol.PortMaps.Order
-        |> Map.filter (fun x _ -> x = Top || x = Bottom)
-        |> Map.toList
-        |> List.map (fun (_,y) -> y.Length)
-        |> List.max
-    
-    (symbol.Component.W * (Option.get symbol.HScale)) / float (maxPortNumber+1)
+// This function returns the value of VScale or HScale or 1 if it has no value
+let getScale (scale: float option) = if scale=None then 1.0 else Option.get scale
 
 // HLP23: Luke
-// This function returns the port number for a wire conencted to a symbol counting from left to right and its edge
-let getPortPositionFromLeft
+// This function checks if a value is withing the range of two other numbers
+let inRange (x: float) (a: float) (b: float) = (x >= a) && (x <= b)
+
+// HLP23: Luke
+// This function get the distance between ports on the edge of a symbol
+let getPortDistances
+    (symbol: Symbol)
+    (edge: Edge)
+    : float =
+
+    let maxPortNumber =
+        symbol.PortMaps.Order
+        |> Map.toList
+        |> List.filter (fun (x,_) -> x = edge)
+        |> List.item 0
+        |> snd
+        |> List.length
+    
+    // let scale = if (edge=Top || edge=Bottom) then getScale symbol.HScale else getScale symbol.VScale
+    // let size = if (edge=Top || edge=Bottom) then symbol.Component.W  else symbol.Component.H
+
+    // (size * scale) / float (maxPortNumber+1)
+
+    if (edge=Top || edge=Bottom)
+    then (symbol.Component.W  * getScale symbol.HScale) / ( float (maxPortNumber) + 1.0 )
+    else (symbol.Component.H  * getScale symbol.VScale) / ( float (maxPortNumber) + 0.4 )
+
+// HLP23: Luke
+// This function returns the port number for a wire connected to a symbol counting from left to right or top to bottom
+// or None if the port is not on the symbol
+let getPortPositionFromTopOrLeft
     (symbol: Symbol)
     (wire: Wire)
     : int option =
@@ -175,9 +201,9 @@ let getPortPositionFromLeft
             edge[0]
             |> snd
             |> List.findIndex (fun x -> x=portId)
+        
         let edgeName = fst edge[0]
-
-        if edgeName = Top
+        if edgeName = Top || edgeName = Right
         then 
             Some ((snd edge[0]).Length - index)
         else Some (index + 1)
@@ -191,12 +217,19 @@ let combineLists (list1: 'a List) (list2: 'a List) =
         |> List.map fst 
 
 // HLP23: Luke
-// This function returns the value of VScale or HScale or 1 if it has no value
-let getScale (scale: float option) = if scale=None then 1.0 else Option.get scale
+// This function returns all the wires that connect two symbols
+let wiresBetweenSymbols
+    (model: Model)
+    (symbol1: Symbol)
+    (symbol2: Symbol)
+    : Wire list =
+    model.Wires
+    |> Map.toList
+    |> List.filter (fun (_,wire) ->
+        isSymbolInputForWire symbol1 wire && List.contains (string wire.InputPort) (getInputPortIds symbol1) && List.contains (string wire.OutputPort) (getOutputPortIds symbol2) ||
+        isSymbolInputForWire symbol2 wire && List.contains (string wire.InputPort) (getInputPortIds symbol2) && List.contains (string wire.OutputPort) (getOutputPortIds symbol1) )
+    |> List.map (fun (_,wire) -> wire)
 
-// HLP23: Luke
-// This function checks if a value is withing the range of two other numbers
-let inRange (x: float) (a: float) (b: float) = (x >= a) && (x <= b)
 
 // HLP23: Luke
 // This function returns a list of wires between two components that are connected on two adjascent edges together with the
@@ -207,13 +240,13 @@ let getAdjacentConnections
     (symbol2: Symbol)
     : ((Edge*Edge) * Wire) list =
 
-    getConnectedWires model [symbol1.Id; symbol2.Id]
+    wiresBetweenSymbols model symbol1 symbol2
     |> List.map (fun x ->
         let symbol1PortId, symbol2PortId =
             if isSymbolInputForWire symbol1 x
             then string x.InputPort, string x.OutputPort
             else string x.OutputPort, string x.InputPort
-        
+
         let symbol1Edge = symbol1.PortMaps.Orientation.Item symbol1PortId
         let symbol2Edge = symbol2.PortMaps.Orientation.Item symbol2PortId
 
