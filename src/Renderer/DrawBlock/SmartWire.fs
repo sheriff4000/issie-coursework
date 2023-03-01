@@ -37,7 +37,7 @@ type Intersect = {
     intersectType: Edge
     position: XYPos
     }
-
+/// wire offset defines how close a wire can be to a component
 let wireOffset = 10.
 
 /// -----------------------------------------------------------------------
@@ -183,8 +183,6 @@ let addFakeSegs (addType: AddSegType) (wire: Wire) (idx: int) (intersect: Inters
     let segments = wire.Segments
     let totalLen = segments[idx].Length
     let vertIntersect = getSegmentOrientation initStart initFinish = Vertical
-    if addType <> Neither then
-        printfn $"beta adding fakeSegs Type = {addType}, index = {idx} " |> ignore
     let prevLen, nextLen =
         if vertIntersect then
             let startToBottom = intersect.box.bottom.start.Y+wireOffset-initStart.Y
@@ -241,40 +239,10 @@ let addFakeSegs (addType: AddSegType) (wire: Wire) (idx: int) (intersect: Inters
     
     {wire with Segments = mappedSegs}, newIdx
 
-// let moveSeg2 (model:Model) (seg:Segment) (distance:float) (intersect: Intersect) = 
-//     let wire = model.Wires[seg.WireId]
-//     let segments = wire.Segments
-//     let idx = seg.Index
-//     if idx = 0 then // Should never happen
-//         printfn $"Trying to move wire segment {seg.Index}:{logSegmentId seg}, out of range in wire length {segments.Length}, adding segments next" |> ignore
-//         let longerWire, _ = addFakeSegs Previous wire idx intersect
-//         longerWire
-//     elif idx = segments.Length - 1 then
-//         printfn $"Trying to move wire segment {seg.Index}:{logSegmentId seg}, out of range in wire length {segments.Length}, adding segments previous"
-//         let longerWire, _ = addFakeSegs Next wire idx intersect
-//         longerWire
-//     elif idx < 0 || idx > segments.Length - 1 then 
-//         printfn "bad things" |> ignore
-//         wire
-//     else
-//         let safeDistance = getSafeDistanceForMove segments idx distance
-//         let prevSeg = segments[idx - 1]
-//         let nextSeg = segments[idx + 1]
-//         let movedSeg = segments[idx]
-
-//         let newPrevSeg = { prevSeg with Length = prevSeg.Length + safeDistance } 
-//         let newNextSeg = { nextSeg with Length = nextSeg.Length - safeDistance }
-//         let newMovedSeg = { movedSeg with Mode = Manual }
-//         let newSegments = 
-//             segments[.. idx - 2] @ [newPrevSeg; newMovedSeg; newNextSeg] @ segments[idx + 2 ..]
-
-//         { wire with Segments = newSegments }
-
 let smartAutoroute (model: Model) (wire: Wire): Wire = 
     let segments = wire.Segments
     let destPos, startPos =
         Symbol.getTwoPortLocations (model.Symbol) (wire.InputPort) (wire.OutputPort)
-    //printfn $"start pos = {startPos}" |> ignore
     let segMap = WireToLineSegs wire
     let getIntersects model wire = 
         
@@ -284,27 +252,13 @@ let smartAutoroute (model: Model) (wire: Wire): Wire =
             |> List.ofSeq
             |> List.map ComponentToBox
     
-    //let (intersects: Intersect list) =
         List.allPairs componentBoxes (List.ofSeq (Map.values segMap))
         |> List.collect (fun (box, line) -> (List.map (fun x -> box, line, x) (SegBoxIntersect box line)))
-        //|> List.filter (fun (_, _, (intersect, position)) -> (intersect, position) <> (Top, None))
         |> List.map (fun (box', line', (intersect', position')) -> {box = box'; line = line'; intersectType = intersect'; position = position'})
         |> List.filter (fun (i: Intersect) -> 
-            //printfn $"intersect pos = {i.position}"
-            //printfn $"intersect pos = start pos {i.position = startPos}"
             i.position <> startPos && i.position <> destPos)
 
     let initIntersects = getIntersects model wire
-
-    let intersectPrinter (intersect: Intersect): unit = 
-        let segIndex = 
-            Map.tryFindKey (fun _ l -> l = intersect.line) segMap
-            |> Option.defaultValue 0
-        printfn $"intersection at {intersect.intersectType} of component, segment = {segIndex}, linemove would be {LineMove (boxLinesToBoundingBox intersect.box) intersect.line}"
-
-    initIntersects
-    |> List.map intersectPrinter
-    |> ignore
 
     /// recursive function to iterate through and handle intersects one at a time
     let rec wireRecursive currWire (intersects: Intersect list) = 
@@ -320,7 +274,6 @@ let smartAutoroute (model: Model) (wire: Wire): Wire =
                     let segIndex = 
                         Map.tryFindKey (fun _ l -> l = intersect.line) segMap
                         |> Option.defaultValue 0 //Shouldn't happen
-                    //let dist = LineMove intersect.intersectType intersect.position intersect.box
                     let dist = LineMove (boxLinesToBoundingBox intersect.box) intersect.line
 
                     let addType = 
@@ -334,11 +287,8 @@ let smartAutoroute (model: Model) (wire: Wire): Wire =
                             else Neither
                         else
                             Both
-                    printfn $"beta alpha add type = {addType} need linemove of {dist}" |> ignore
                     let longerWire, newSegIdx = addFakeSegs addType currWire segIndex intersect
-                    printfn $"beta new seg list = {longerWire.Segments.Length} " |> ignore
                     let newWire = 
-                        //moveSegment model longerWire.Segments[newSegIdx] dist
                         if newSegIdx = 0 then 
                             let tmpWire, tmpIdx = addFakeSegs Previous longerWire newSegIdx intersect
                             moveSegment model tmpWire.Segments[tmpIdx] dist //intersect
@@ -351,17 +301,12 @@ let smartAutoroute (model: Model) (wire: Wire): Wire =
                     let newIntersect =
                         if contradiction then 
                             let newIntersects = SmartHelpers.listDifference currIntersects intersects
-                            printfn $"alpha newIntersects length {List.length newIntersects}" |> ignore
-                            let oldIntersects = SmartHelpers.listDifference intersects currIntersects
-                            printfn $"alpha oldIntersects length {List.length oldIntersects}"
-                            printfn $"alpha contradiction with intersect {newIntersects[0].intersectType}" |> ignore
                             let unionBox = 
                                 if not (List.isEmpty newIntersects) then
                                     Some (unionBoxLines intersect.box (List.map (fun x->x.box ) newIntersects))
                                 else
                                     None
                             if Option.isSome unionBox then
-                                printfn "new intersection added" |> ignore
                                 {intersect with box = (Option.get unionBox)}
                             else
                                 intersect

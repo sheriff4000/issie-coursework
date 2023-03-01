@@ -215,18 +215,3 @@ let connectingWires (symbol1:Symbol) (symbol2:Symbol) (model:Model)=
         List.map (isConnected) (allWires model)
         |> List.filter (fun f -> f <> None) //removes None entries from list
         |> List.map removeOption
-
-/// HLP23: Sherif
-/// This function is used to find the union between two bounding boxes
-/// it is essentially boxUnion in Sheet.fs made accessible in wiring smartwire etc
-
-let boxUnion (box:BoundingBox) (box':BoundingBox) =
-    let maxX = max (box.TopLeft.X+box.W) (box'.TopLeft.X + box'.W)
-    let maxY = max (box.TopLeft.Y + box.H) (box'.TopLeft.Y + box'.H)
-    let minX = min box.TopLeft.X box'.TopLeft.X
-    let minY = min box.TopLeft.Y box'.TopLeft.Y
-    {
-        TopLeft = {X = minX; Y = minY}
-        W = maxX - minX
-        H = maxY - minY
-    }
