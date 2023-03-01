@@ -168,11 +168,6 @@ let getPortDistances
         |> List.item 0
         |> snd
         |> List.length
-    
-    // let scale = if (edge=Top || edge=Bottom) then getScale symbol.HScale else getScale symbol.VScale
-    // let size = if (edge=Top || edge=Bottom) then symbol.Component.W  else symbol.Component.H
-
-    // (size * scale) / float (maxPortNumber+1)
 
     if (edge=Top || edge=Bottom)
     then (symbol.Component.W  * getScale symbol.HScale) / ( float (maxPortNumber) + 1.0 )

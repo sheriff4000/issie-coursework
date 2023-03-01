@@ -33,10 +33,12 @@ open BusWireUpdateHelpers
 /// HLP23: when this function is written replace teh XML comment by something suitable concisely
 /// stating what it does.
 /// 
-/// 
-/// HLP23: Luke
-/// 
 
+
+// HLP23: Luke
+// This function is used to resize a component to a size to match the port distance of anther symbol
+// and then shift the symbol so that it has straight wires connecting to that symbol.
+// The function can do this when symbols are stacked vertically or next to each other horizontally.
 let resizeAndShift
     (wModel: Model)
     (connections: ((Edge*Edge)*Wire) list)
@@ -128,6 +130,10 @@ let resizeAndShift
             Symbol = {sModel with Symbols = Map.add symbol'.Id symbol' sModel.Symbols}
     }
 
+// HLP23: Luke
+// This function is the main function for SmartSizeSymbol.
+// It first checks if the two components are Custom components and if they are, works out in which
+// direction the symbol should be resized and shifted, if the two components have at least one connected wire.
 let reSizeSymbol 
     (wModel: BusWireT.Model) 
     (symbolToSize: Symbol) 
@@ -157,16 +163,12 @@ let reSizeSymbol
                                 || inRange rightOfOther leftOfSymbol rightOfSymbol || inRange leftOfOther leftOfSymbol rightOfSymbol
 
         let adjacentConnections = getAdjacentConnections wModel symbolToSize otherSymbol
-
         let verticalConnections =
             adjacentConnections
             |> List.filter (fun ((edge1, edge2), _) -> (symbolOnTop && edge1=Bottom && edge2=Top) || (not symbolOnTop && edge1=Top && edge2=Bottom))
-            // |> List.map (fun ((_, _), wire) -> wire)
-
         let horizontalConnections =
             adjacentConnections
             |> List.filter (fun ((edge1, edge2), _) -> (symbolOnLeft && edge1=Right && edge2=Left) || (not symbolOnLeft && edge1=Left && edge2=Right))
-            // |> List.map (fun ((_, _), wire) -> wire)
 
         match verticalConnections.Length, horizontalConnections.Length with
         | x,_ when x>0 && not deadZoneV ->
