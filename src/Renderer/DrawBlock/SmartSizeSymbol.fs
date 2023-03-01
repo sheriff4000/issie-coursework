@@ -32,98 +32,104 @@ open BusWireUpdateHelpers
 /// It will do nothing if symbolToOrder is not a Custom component (which has adjustable size).
 /// HLP23: when this function is written replace teh XML comment by something suitable concisely
 /// stating what it does.
+/// 
+/// 
+/// HLP23: Luke
 let reSizeSymbol 
     (wModel: BusWireT.Model) 
     (symbolToSize: Symbol) 
     (otherSymbol: Symbol) 
         : BusWireT.Model =
     printfn $"ReSizeSymbol: ToResize:{symbolToSize.Component.Label}, Other:{otherSymbol.Component.Label}"
-    let sModel = wModel.Symbol
 
-    let connectingWires = getConnectedWires wModel [symbolToSize.Id; otherSymbol.Id]
-    let connectingWireIds = getConnectedWireIds wModel [symbolToSize.Id; otherSymbol.Id]
+    match symbolToSize.Component.Type, otherSymbol.Component.Type with
+    | Custom _, Custom _ ->
+        let symbolVScale = getScale symbolToSize.VScale
+        let otherVScale = getScale otherSymbol.VScale
 
-    let symbol',wires = 
-        if List.length connectingWires > 1
+        let bottomOfSymbol = symbolToSize.Pos.Y + symbolToSize.Component.H*symbolVScale
+        let bottomOfOther = otherSymbol.Pos.Y + otherSymbol.Component.H*otherVScale
+        let topOfSymbol = symbolToSize.Pos.Y
+        let topOfOther = otherSymbol.Pos.Y
+
+        let symbolOnTop = bottomOfSymbol < topOfOther
+        let deadZone = inRange topOfSymbol topOfOther bottomOfOther || inRange bottomOfSymbol topOfOther bottomOfOther 
+                                || inRange topOfOther topOfSymbol bottomOfSymbol || inRange bottomOfOther topOfSymbol bottomOfSymbol
+        
+        if not deadZone
         then 
-            let firstWire = connectingWires[0]
-            
-            let symbolPortPosition =
-                if isSymbolInputForWire symbolToSize firstWire
-                then getPortPositionFromLeft symbolToSize (string firstWire.InputPort)
-                else getPortPositionFromLeft symbolToSize (string firstWire.OutputPort)
+            let adjacentConnections = getAdjacentConnections wModel symbolToSize otherSymbol
 
-            let symbolPortNumberFloat = 
-                symbolPortPosition
-                |> Option.get
-                |> snd
-                |> (fun x -> x+1)
-                |> float
+            let verticalConnections =
+                adjacentConnections
+                |> List.filter ( fun ((edge1, edge2), _) -> (symbolOnTop && edge1=Bottom && edge2=Top) || (not symbolOnTop && edge1=Top && edge2=Bottom) )
+                |> List.map (fun ((_, _), wire) -> wire)
 
-            let portDistanceSymbol = getPortDistancesH symbolToSize
-            let portDistanceOther = getPortDistancesH otherSymbol
+            if verticalConnections.Length > 0
+            then
 
-            let scaling = (portDistanceOther/ portDistanceSymbol) * Option.get symbolToSize.HScale
-            let shift = -symbolPortNumberFloat * (portDistanceOther - portDistanceSymbol) + firstWire.Segments[firstWire.Segments.Length / 2].Length
+                let verticalConnectionsId =
+                    verticalConnections
+                    |> List.map (fun wire -> wire.WId)
+                let firstWire = verticalConnections[0]
 
-            let wires' = wModel.Wires
-                // wModel.Wires
-                // |> Map.map (fun id wire ->
-                //     if List.contains id connectingWireIds
-                //     then
-                //         if isSymbolInputForWire symbolToSize wire
-                //         then
-                //             {
-                //                 wire with
-                //                     StartPos = 
-                //                         {
-                //                             wire.StartPos with
-                //                                 X = wire.StartPos.X + shift
-                //                         }
-                //                     Segments =
-                //                         wire.Segments
-                //                         |> List.map (fun x ->
-                //                             if x.Index = wire.Segments.Length / 2
-                //                             then
-                //                                 {
-                //                                     x with
-                //                                         Length = x.Length + shift
-                //                                 }
-                //                             else x)
-                //             }
-                //         else 
-                //             {
-                //                 wire with
-                //                     StartPos = 
-                //                         {
-                //                             wire.StartPos with
-                //                                 X = wire.StartPos.X + shift
-                //                         }
-                //                     Segments =
-                //                         wire.Segments
-                //                         |> List.map (fun x ->
-                //                             if x.Index = wire.Segments.Length / 2
-                //                             then
-                //                                 {
-                //                                     x with
-                //                                         Length = 0
-                //                                 }
-                //                             else x)
-                //             }
-                //     else wire)
-            
-            {
-                symbolToSize with 
-                    HScale = Some scaling
-                    Pos = {symbolToSize.Pos with X = symbolToSize.Pos.X + shift}
-            }, wires'
+                let symbolPortNumberFloat = float (Option.get (getPortPositionFromLeft symbolToSize firstWire))
+                let portDistanceSymbol = getPortDistancesH symbolToSize
+                let portDistanceOther = getPortDistancesH otherSymbol
 
-        else symbolToSize,wModel.Wires
-                
-    {
-        wModel with 
-            Wires = wires // no change for now, but probably this function should use update wires after resizing.
-                                // to make that happen the test function which calls this would need to provide an updateWire
-                                // function to this as a parameter (as was done in Tick3)
-            Symbol = {sModel with Symbols = Map.add symbol'.Id symbol' sModel.Symbols}
-    }
+                let isAbove = if symbolOnTop then 1.0 else -1.0
+                let wireshift = firstWire.Segments[firstWire.Segments.Length / 2].Length * float (sign firstWire.Segments[firstWire.Segments.Length / 2 - 1].Length) * isAbove
+                let shift = -symbolPortNumberFloat * (portDistanceOther - portDistanceSymbol) + wireshift
+
+                let scaling = (portDistanceOther / portDistanceSymbol) * Option.get symbolToSize.HScale
+
+                let symbol' = 
+                    {
+                        symbolToSize with 
+                            HScale = Some scaling
+                            Pos = {symbolToSize.Pos with X = symbolToSize.Pos.X + shift}
+                    }
+
+                let wires' =
+                    wModel.Wires
+                    |> Map.map (fun id wire ->
+                        if List.contains id verticalConnectionsId
+                        then
+                            let wirePortNumberFloat = float (Option.get (getPortPositionFromLeft symbolToSize wire))
+
+                            if isSymbolInputForWire symbolToSize firstWire
+                            then
+                                {
+                                    wire with
+                                        Segments =
+                                            wire.Segments
+                                            |> List.map (fun x ->
+                                                if x.Index = wire.Segments.Length / 2
+                                                then { x with Length = x.Length + wireshift + (wirePortNumberFloat - symbolPortNumberFloat)*(portDistanceOther - portDistanceSymbol) }
+                                                else x )
+                                }
+                            else
+                                {
+                                    wire with
+                                        StartPos = 
+                                            { wire.StartPos with X = wire.StartPos.X + wireshift + (wirePortNumberFloat - symbolPortNumberFloat)*(portDistanceOther - portDistanceSymbol) }
+                                        Segments =
+                                            wire.Segments
+                                            |> List.map (fun x ->
+                                                if x.Index = wire.Segments.Length / 2
+                                                then { x with Length = x.Length - wireshift - (wirePortNumberFloat - symbolPortNumberFloat)*(portDistanceOther - portDistanceSymbol) }
+                                                else x )
+                                }
+
+                        else wire)        
+
+                let sModel = wModel.Symbol
+                {
+                    wModel with 
+                        Wires = wires'
+                        Symbol = {sModel with Symbols = Map.add symbol'.Id symbol' sModel.Symbols}
+                }
+
+            else wModel
+        else wModel
+    | _, _ ->  wModel

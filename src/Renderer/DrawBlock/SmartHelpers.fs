@@ -154,40 +154,68 @@ let getPortDistancesH
     (symbol.Component.W * (Option.get symbol.HScale)) / float (maxPortNumber+1)
 
 // HLP23: Luke
-// This function returns the port number counting from left to right and its edge
+// This function returns the port number for a wire conencted to a symbol counting from left to right and its edge
 let getPortPositionFromLeft
     (symbol: Symbol)
-    (portId: string)
-    : (Edge*int) option =
+    (wire: Wire)
+    : int option =
+    let portId =
+        if isSymbolInputForWire symbol wire
+        then string wire.InputPort
+        else string wire.OutputPort
+
     let edge = 
         symbol.PortMaps.Order
         |> Map.toList
         |> List.filter (fun (_,lst) -> List.contains portId lst)
-    
+
     if edge.Length > 0
     then 
         let index =
             edge[0]
             |> snd
-            |> List.findIndex (fun x -> 
-                printfn "id %A %A" x portId
-                x=portId)
+            |> List.findIndex (fun x -> x=portId)
         let edgeName = fst edge[0]
 
         if edgeName = Top
-        then Some (fst edge[0], (snd edge[0]).Length - 1 - index)
-        else Some (fst edge[0], index)
+        then 
+            Some ((snd edge[0]).Length - index)
+        else Some (index + 1)
         
     else None
 
+// HLP23: Luke
+// This function returns the value of VScale or HScale or 1 if it has no value
+let getScale (scale: float option) = if scale=None then 1.0 else Option.get scale
 
-//HLP23: AUTHOR Ewan
-//This function returns a list of all the wires in the model
-let allWires (model: BusWireT.Model) = 
-        let getWire (connectID, wire: 'b)=
-            wire
-        Map.toList model.Wires
-        |> List.map snd
+// HLP23: Luke
+// This function checks if a value is withing the range of two other numbers
+let inRange (x: float) (a: float) (b: float) = (x >= a) && (x <= b)
+
+// HLP23: Luke
+// This function returns a list of wires between two components that are connected on two adjascent edges together with the
+// edges the wire is connected to
+let getAdjacentConnections
+    (model: Model)
+    (symbol1: Symbol)
+    (symbol2: Symbol)
+    : ((Edge*Edge) * Wire) list =
+
+    getConnectedWires model [symbol1.Id; symbol2.Id]
+    |> List.map (fun x ->
+        let symbol1PortId, symbol2PortId =
+            if isSymbolInputForWire symbol1 x
+            then string x.InputPort, string x.OutputPort
+            else string x.OutputPort, string x.InputPort
+        
+        let symbol1Edge = symbol1.PortMaps.Orientation.Item symbol1PortId
+        let symbol2Edge = symbol2.PortMaps.Orientation.Item symbol2PortId
+
+        match symbol1Edge, symbol2Edge with
+        | Top,Bottom | Bottom,Top | Left,Right | Right,Left -> Some ((symbol1Edge,symbol2Edge),x)
+        | _ -> None )
+    |> List.filter (fun x -> not (x=None))
+    |> List.map (fun x -> Option.get x)
 
 //HLP23: AUTHOR Ewan
 //This function find all the wires connected between two symbols
@@ -215,3 +243,20 @@ let connectingWires (symbol1:Symbol) (symbol2:Symbol) (model:Model)=
         List.map (isConnected) (allWires model)
         |> List.filter (fun f -> f <> None) //removes None entries from list
         |> List.map removeOption
+//This function returns a list of all the wires connected between two symbols
+//To use, begin with the connectedWire input equalling [] and index equalling 0
+
+let rec getConnectedWires (connectedWires: Wire List) index symbol1 symbol2 (model:Model)= 
+                let wiresSymbol1 = BusWireUpdateHelpers.getConnectedWires model [symbol1.Id]
+                let wiresSymbol2 = BusWireUpdateHelpers.getConnectedWires model [symbol2.Id]
+                if index = wiresSymbol1.Length
+                then 
+                    connectedWires
+                else
+                    if List.exists (fun x -> x = wiresSymbol1[index]) wiresSymbol2
+                    then 
+                        let newConnectedWires = List.append connectedWires [wiresSymbol1[index]]
+                        getConnectedWires newConnectedWires (index+1) symbol1 symbol2 model
+                    else 
+                    
+                        getConnectedWires connectedWires (index+1) symbol1 symbol2 model
