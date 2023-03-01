@@ -186,7 +186,6 @@ let getPortPositionFromLeft
 //HLP23: AUTHOR Ewan
 //This function returns a list of all the elements in both input lists
 let combineLists (list1: 'a List) (list2: 'a List) = 
-        //printfn $"TESTING {List.allPairs list1 list2}"
         List.allPairs list1 list2
         |> List.filter (fun (x,y) -> x = y)
         |> List.map fst 
@@ -198,4 +197,49 @@ let getConnectedWires (symbol1: Symbol) (symbol2: Symbol) (model:Model) =
     let wiresSymbol2 = BusWireUpdateHelpers.getConnectedWires model [symbol2.Id]
     combineLists wiresSymbol1 wiresSymbol2
 
+//HLP23: AUTHOR Ewan
+//Given a wire connected to a symbol, this function returns the associated port
+let getPortFromWire (model: SymbolT.Model)(symbol:Symbol) (wire:Wire)=
+        let inputPort = Symbol.getInputPortIdStr (wire.InputPort)
+        let outputPort = Symbol.getOutputPortIdStr (wire.OutputPort)
+        //to check if input or output port on symbol, go through each side of symbol and check if input id is present
+        let ports edge = symbol.PortMaps.Order[edge]
+        let allPortsOnSymbol = List.collect ports [Left; Right; Top; Bottom]
+        if List.exists (fun x -> if x = inputPort then true else false) allPortsOnSymbol
+        then 
+            Symbol.getPort model inputPort
+        else 
+            Symbol.getPort model outputPort
 
+
+//HLP23: AUTHOR Ewan
+//Returns true if two wires are intersecting each other and false if they are not
+let isInterconnected (fstWire,sndWire)=
+        let fstWireAseg = BusWire.getAbsSegments fstWire
+        let sndWireAseg = BusWire.getAbsSegments sndWire
+        let compareSegments (sndWire: ASegment list) (seg:ASegment) =
+            let compareY (seg:ASegment) (wireSeg:ASegment)=
+                let isTaller = wireSeg.Start.Y > seg.Start.Y
+                if wireSeg.Start.X >= seg.Start.X
+                then 
+                    if wireSeg.Start.X <= seg.End.X
+                    then 
+                        [isTaller]
+                    else 
+                        []
+                else 
+                    if wireSeg.End.X >= seg.Start.X
+                    then 
+                        [isTaller]
+                    else 
+                        []
+            List.collect (compareY seg) sndWire
+        let lst = List.collect (compareSegments sndWireAseg) fstWireAseg
+                               |> List.distinct                      
+        if lst.Length <> 1
+        then 
+            //is interconnected
+            true
+        else 
+            //not interconnected
+            false
