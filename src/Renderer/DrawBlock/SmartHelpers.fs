@@ -186,7 +186,7 @@ let getPortPositionFromLeft
 //HLP23: AUTHOR Ewan
 //This function returns a list of all the elements in both input lists
 let combineLists (list1: 'a List) (list2: 'a List) = 
-        printfn $"TESTING {List.allPairs list1 list2}"
+        //printfn $"TESTING {List.allPairs list1 list2}"
         List.allPairs list1 list2
         |> List.filter (fun (x,y) -> x = y)
         |> List.map fst 
