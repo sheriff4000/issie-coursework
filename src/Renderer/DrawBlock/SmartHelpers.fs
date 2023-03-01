@@ -183,6 +183,12 @@ let getPortPositionFromLeft
         else Some (index + 1)
         
     else None
+//HLP23: AUTHOR Ewan
+//This function returns a list of all the elements in both input lists
+let combineLists (list1: 'a List) (list2: 'a List) = 
+        List.allPairs list1 list2
+        |> List.filter (fun (x,y) -> x = y)
+        |> List.map fst 
 
 // HLP23: Luke
 // This function returns the value of VScale or HScale or 1 if it has no value
@@ -244,19 +250,59 @@ let connectingWires (symbol1:Symbol) (symbol2:Symbol) (model:Model)=
         |> List.filter (fun f -> f <> None) //removes None entries from list
         |> List.map removeOption
 //This function returns a list of all the wires connected between two symbols
-//To use, begin with the connectedWire input equalling [] and index equalling 0
+let getConnectedWires (symbol1: Symbol) (symbol2: Symbol) (model:Model) = 
+    let wiresSymbol1 = BusWireUpdateHelpers.getConnectedWires model [symbol1.Id]
+    let wiresSymbol2 = BusWireUpdateHelpers.getConnectedWires model [symbol2.Id]
+    combineLists wiresSymbol1 wiresSymbol2
 
-let rec getConnectedWires (connectedWires: Wire List) index symbol1 symbol2 (model:Model)= 
-                let wiresSymbol1 = BusWireUpdateHelpers.getConnectedWires model [symbol1.Id]
-                let wiresSymbol2 = BusWireUpdateHelpers.getConnectedWires model [symbol2.Id]
-                if index = wiresSymbol1.Length
+//HLP23: AUTHOR Ewan
+//Given a wire connected to a symbol, this function returns the associated port
+let getPortFromWire (model: SymbolT.Model)(symbol:Symbol) (wire:Wire)=
+        let inputPort = Symbol.getInputPortIdStr (wire.InputPort)
+        let outputPort = Symbol.getOutputPortIdStr (wire.OutputPort)
+        //to check if input or output port on symbol, go through each side of symbol and check if input id is present
+        let ports edge = symbol.PortMaps.Order[edge]
+        let allPortsOnSymbol = List.collect ports [Left; Right; Top; Bottom]
+        if List.exists (fun x -> if x = inputPort then true else false) allPortsOnSymbol
+        then 
+            Symbol.getPort model inputPort
+        else 
+            Symbol.getPort model outputPort
+
+
+//HLP23: AUTHOR Ewan
+//Returns true if two wires are intersecting each other and false if they are not
+let isInterconnected (fstWire,sndWire)=
+        let fstWireAseg = BusWire.getAbsSegments fstWire
+        let sndWireAseg = BusWire.getAbsSegments sndWire
+        let compareSegments (sndWire: ASegment list) (seg:ASegment) =
+            let compareY (seg:ASegment) (wireSeg:ASegment)=
+                let isTaller = wireSeg.Start.Y > seg.Start.Y
+                if wireSeg.Start.X >= seg.Start.X
                 then 
-                    connectedWires
-                else
-                    if List.exists (fun x -> x = wiresSymbol1[index]) wiresSymbol2
+                    if wireSeg.Start.X <= seg.End.X
                     then 
-                        let newConnectedWires = List.append connectedWires [wiresSymbol1[index]]
-                        getConnectedWires newConnectedWires (index+1) symbol1 symbol2 model
+                        [isTaller]
                     else 
+                        []
+                else 
+                    if wireSeg.End.X >= seg.Start.X
+                    then 
+                        [isTaller]
+                    else 
+
+                        []
+            List.collect (compareY seg) sndWire
+        let lst = List.collect (compareSegments sndWireAseg) fstWireAseg
+                               |> List.distinct                      
+        if lst.Length <> 1
+        then 
+            //is interconnected
+            true
+        else 
+            //not interconnected
+            false
+
                     
                         getConnectedWires connectedWires (index+1) symbol1 symbol2 model
+
