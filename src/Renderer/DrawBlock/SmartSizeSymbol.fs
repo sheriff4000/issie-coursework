@@ -33,6 +33,11 @@ open BusWireUpdateHelpers
 /// HLP23: when this function is written replace teh XML comment by something suitable concisely
 /// stating what it does.
 /// 
+/// 
+
+type sizeHelpers = {
+    UpdateSymbolWiresHelper: BusWireT.Model -> ComponentId -> BusWireT.Model
+}
 
 
 // HLP23: Luke
@@ -48,6 +53,7 @@ let resizeAndShift
     (otherSymbol: Symbol)
     (symbolOnTopOrLeft: bool)
     (vertical: bool)
+    (sizeHelpers: sizeHelpers)
     =
     let firstEdges,firstWire = connections[0]
 
@@ -83,50 +89,18 @@ let resizeAndShift
                     }
         }
 
-    let connectionIds2 = getConnectedWireIds wModel [symbolToSize.Id;]
-
-    let wires' =
-        wModel.Wires
-        |> Map.map (fun id wire ->
-            if List.contains id connectionIds2
-            then
-                let wirePortNumberFloat: float = float (Option.get (getPortPositionFromTopOrLeft symbolToSize wire))
-                let wiremove = wireshift + (wirePortNumberFloat - symbolPortNumberFloat)*(portDistanceOther - portDistanceSymbol)
-
-                if isSymbolInputForWire symbolToSize wire
-                then
-                    {
-                        wire with
-                            Segments =
-                                wire.Segments
-                                |> List.map (fun x ->
-                                    if x.Index = wire.Segments.Length / 2
-                                    then { x with Length = x.Length + wiremove }
-                                    else x )
-                    }
-                else
-                    {
-                        wire with
-                            StartPos = 
-                                { 
-                                    wire.StartPos with 
-                                        X = wire.StartPos.X + wiremove*verticalNum
-                                        Y = wire.StartPos.Y + wiremove*horizontalNum
-                                }
-                            Segments =
-                                wire.Segments
-                                |> List.map (fun x ->
-                                    if x.Index = wire.Segments.Length / 2
-                                    then { x with Length = x.Length - wiremove }
-                                    else x )
-                    }
-
-            else wire)        
-
     let sModel = wModel.Symbol
+
+    let wireModel =
+        ({
+                wModel with 
+                    Symbol = {sModel with Symbols = Map.add symbol'.Id symbol' sModel.Symbols}
+        }, symbolToSize.Id)
+        ||> sizeHelpers.UpdateSymbolWiresHelper       
+
     {
         wModel with 
-            Wires = wires'
+            Wires = wireModel.Wires
             Symbol = {sModel with Symbols = Map.add symbol'.Id symbol' sModel.Symbols}
     }
 
@@ -138,6 +112,7 @@ let reSizeSymbol
     (wModel: BusWireT.Model) 
     (symbolToSize: Symbol) 
     (otherSymbol: Symbol) 
+    (sizeHelpers: sizeHelpers)
         : BusWireT.Model =
     printfn $"ReSizeSymbol: ToResize:{symbolToSize.Component.Label}, Other:{otherSymbol.Component.Label}"
 
@@ -172,9 +147,9 @@ let reSizeSymbol
 
         match verticalConnections.Length, horizontalConnections.Length with
         | x,_ when x>0 && not deadZoneV ->
-            resizeAndShift wModel verticalConnections symbolToSize otherSymbol symbolOnTop true
+            resizeAndShift wModel verticalConnections symbolToSize otherSymbol symbolOnTop true sizeHelpers
         | _,x when x>0 && not deadZoneH ->
-            resizeAndShift wModel horizontalConnections symbolToSize otherSymbol symbolOnLeft false
+            resizeAndShift wModel horizontalConnections symbolToSize otherSymbol symbolOnLeft false sizeHelpers
         | _,_ -> wModel
 
     | _, _ ->  wModel

@@ -31,6 +31,8 @@ let helpers:SmartPortOrder.BusWireHelpers = {
     UpdateWires = BusWireUpdate.updateWires
     UpdateSymbolWires = BusWireUpdate.updateSymbolWires
 }
+let sizeHelpers:SmartSizeSymbol.sizeHelpers = {UpdateSymbolWiresHelper = BusWireUpdate.updateSymbolWires}
+
 /// Update Function
 let update (msg : Msg) (model : Model): Model*Cmd<Msg> =
     /// check things that might not have been correctly completed in the last update and if so do them
@@ -761,7 +763,7 @@ let update (msg : Msg) (model : Model): Model*Cmd<Msg> =
          validateTwoSelectedSymbols model
          |> function
             | Some (s1,s2) ->
-                {model with Wire = SmartSizeSymbol.reSizeSymbol model.Wire s1 s2}, Cmd.none
+                {model with Wire = SmartSizeSymbol.reSizeSymbol model.Wire s1 s2 sizeHelpers}, Cmd.none
             | None -> 
                 printfn "Error: can't validate the two symbols selected to reorder ports"
                 model, Cmd.none
