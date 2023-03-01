@@ -51,10 +51,6 @@ let resizeAndShift
     =
     let firstEdges,firstWire = connections[0]
 
-    let connectionIds =
-        connections
-        |> List.map (fun ((_,_),wire) -> wire.WId)
-
     let symbolPortNumberFloat = float (Option.get ( if vertical then (getPortPositionFromTopOrLeft symbolToSize firstWire) else (getPortPositionFromTopOrLeft symbolToSize firstWire) ))
     
     let portDistanceSymbol = if vertical then getPortDistances symbolToSize (fst firstEdges) else getPortDistances symbolToSize (fst firstEdges)
@@ -92,7 +88,7 @@ let resizeAndShift
     let wires' =
         wModel.Wires
         |> Map.map (fun id wire ->
-            if List.contains id connectionIds2//connectionIds
+            if List.contains id connectionIds2
             then
                 let wirePortNumberFloat: float = float (Option.get (getPortPositionFromTopOrLeft symbolToSize wire))
                 let wiremove = wireshift + (wirePortNumberFloat - symbolPortNumberFloat)*(portDistanceOther - portDistanceSymbol)
