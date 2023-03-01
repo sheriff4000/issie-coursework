@@ -190,7 +190,65 @@ let combineLists (list1: 'a List) (list2: 'a List) =
         |> List.filter (fun (x,y) -> x = y)
         |> List.map fst 
 
+// HLP23: Luke
+// This function returns the value of VScale or HScale or 1 if it has no value
+let getScale (scale: float option) = if scale=None then 1.0 else Option.get scale
+
+// HLP23: Luke
+// This function checks if a value is withing the range of two other numbers
+let inRange (x: float) (a: float) (b: float) = (x >= a) && (x <= b)
+
+// HLP23: Luke
+// This function returns a list of wires between two components that are connected on two adjascent edges together with the
+// edges the wire is connected to
+let getAdjacentConnections
+    (model: Model)
+    (symbol1: Symbol)
+    (symbol2: Symbol)
+    : ((Edge*Edge) * Wire) list =
+
+    getConnectedWires model [symbol1.Id; symbol2.Id]
+    |> List.map (fun x ->
+        let symbol1PortId, symbol2PortId =
+            if isSymbolInputForWire symbol1 x
+            then string x.InputPort, string x.OutputPort
+            else string x.OutputPort, string x.InputPort
+        
+        let symbol1Edge = symbol1.PortMaps.Orientation.Item symbol1PortId
+        let symbol2Edge = symbol2.PortMaps.Orientation.Item symbol2PortId
+
+        match symbol1Edge, symbol2Edge with
+        | Top,Bottom | Bottom,Top | Left,Right | Right,Left -> Some ((symbol1Edge,symbol2Edge),x)
+        | _ -> None )
+    |> List.filter (fun x -> not (x=None))
+    |> List.map (fun x -> Option.get x)
+
 //HLP23: AUTHOR Ewan
+//This function find all the wires connected between two symbols
+//This function returns a list of 3 part tuples
+//containing the wire, the connected port ID for the first symbol, and the connected port ID for the second symbol
+
+let connectingWires (symbol1:Symbol) (symbol2:Symbol) (model:Model)=
+        let isConnected (wire)=
+            if Map.tryFind (string wire.InputPort) symbol1.PortMaps.Orientation <> None
+            then 
+                if Map.tryFind (string wire.OutputPort) symbol2.PortMaps.Orientation <> None
+                then Some (wire, (string wire.InputPort), (string wire.OutputPort))
+                else None
+            else 
+                if Map.tryFind (string wire.OutputPort) symbol1.PortMaps.Orientation <> None
+                then 
+                    if Map.tryFind (string wire.InputPort) symbol2.PortMaps.Orientation <> None
+                    then Some (wire, (string wire.OutputPort), (string wire.InputPort))
+                    else None
+                else None
+        let removeOption =
+            function
+            |Some x -> x
+            |None -> failwithf "can't happen"
+        List.map (isConnected) (allWires model)
+        |> List.filter (fun f -> f <> None) //removes None entries from list
+        |> List.map removeOption
 //This function returns a list of all the wires connected between two symbols
 let getConnectedWires (symbol1: Symbol) (symbol2: Symbol) (model:Model) = 
     let wiresSymbol1 = BusWireUpdateHelpers.getConnectedWires model [symbol1.Id]
@@ -232,6 +290,7 @@ let isInterconnected (fstWire,sndWire)=
                     then 
                         [isTaller]
                     else 
+
                         []
             List.collect (compareY seg) sndWire
         let lst = List.collect (compareSegments sndWireAseg) fstWireAseg
@@ -243,3 +302,7 @@ let isInterconnected (fstWire,sndWire)=
         else 
             //not interconnected
             false
+
+                    
+                        getConnectedWires connectedWires (index+1) symbol1 symbol2 model
+
