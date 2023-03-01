@@ -253,31 +253,6 @@ let getAdjacentConnections
     |> List.map (fun x -> Option.get x)
 
 //HLP23: AUTHOR Ewan
-//This function find all the wires connected between two symbols
-//This function returns a list of 3 part tuples
-//containing the wire, the connected port ID for the first symbol, and the connected port ID for the second symbol
-
-let connectingWires (symbol1:Symbol) (symbol2:Symbol) (model:Model)=
-        let isConnected (wire)=
-            if Map.tryFind (string wire.InputPort) symbol1.PortMaps.Orientation <> None
-            then 
-                if Map.tryFind (string wire.OutputPort) symbol2.PortMaps.Orientation <> None
-                then Some (wire, (string wire.InputPort), (string wire.OutputPort))
-                else None
-            else 
-                if Map.tryFind (string wire.OutputPort) symbol1.PortMaps.Orientation <> None
-                then 
-                    if Map.tryFind (string wire.InputPort) symbol2.PortMaps.Orientation <> None
-                    then Some (wire, (string wire.OutputPort), (string wire.InputPort))
-                    else None
-                else None
-        let removeOption =
-            function
-            |Some x -> x
-            |None -> failwithf "can't happen"
-        List.map (isConnected) (allWires model)
-        |> List.filter (fun f -> f <> None) //removes None entries from list
-        |> List.map removeOption
 //This function returns a list of all the wires connected between two symbols
 let getConnectedWires (symbol1: Symbol) (symbol2: Symbol) (model:Model) = 
     let wiresSymbol1 = BusWireUpdateHelpers.getConnectedWires model [symbol1.Id]
@@ -333,5 +308,4 @@ let isInterconnected (fstWire,sndWire)=
             false
 
                     
-                        getConnectedWires connectedWires (index+1) symbol1 symbol2 model
 
