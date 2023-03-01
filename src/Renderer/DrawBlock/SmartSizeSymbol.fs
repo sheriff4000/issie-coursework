@@ -39,6 +39,8 @@ open BusWireUpdateHelpers
 // This function is used to resize a component to a size to match the port distance of anther symbol
 // and then shift the symbol so that it has straight wires connecting to that symbol.
 // The function can do this when symbols are stacked vertically or next to each other horizontally.
+
+// This function can only reshape 7 segment wires correctly with it's rerouting
 let resizeAndShift
     (wModel: Model)
     (connections: ((Edge*Edge)*Wire) list)
@@ -85,15 +87,19 @@ let resizeAndShift
                     }
         }
 
+    let connectionIds2 = getConnectedWireIds wModel [symbolToSize.Id;]
+
+    printfn "%A" symbolToSize
+
     let wires' =
         wModel.Wires
         |> Map.map (fun id wire ->
-            if List.contains id connectionIds
+            if List.contains id connectionIds2//connectionIds
             then
                 let wirePortNumberFloat: float = float (Option.get (getPortPositionFromTopOrLeft symbolToSize wire))
                 let wiremove = wireshift + (wirePortNumberFloat - symbolPortNumberFloat)*(portDistanceOther - portDistanceSymbol)
 
-                if isSymbolInputForWire symbolToSize firstWire
+                if isSymbolInputForWire symbolToSize wire
                 then
                     {
                         wire with

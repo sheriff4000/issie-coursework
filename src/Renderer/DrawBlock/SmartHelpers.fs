@@ -180,6 +180,7 @@ let getPortPositionFromTopOrLeft
     (symbol: Symbol)
     (wire: Wire)
     : int option =
+    printfn "%A" wire
     let portId =
         if isSymbolInputForWire symbol wire
         then string wire.InputPort
@@ -202,8 +203,9 @@ let getPortPositionFromTopOrLeft
         then 
             Some ((snd edge[0]).Length - index)
         else Some (index + 1)
-        
     else None
+
+
 //HLP23: AUTHOR Ewan
 //This function returns a list of all the elements in both input lists
 let combineLists (list1: 'a List) (list2: 'a List) = 
