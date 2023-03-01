@@ -25,6 +25,7 @@ open DrawModelType.BusWireT
 
 [<AutoOpen>]
 module Constants =
+    let recursionLimit = 10
     /// default style of routing
     let initialWireType = Radial
     /// default arrow display
