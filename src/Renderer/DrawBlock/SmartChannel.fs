@@ -276,7 +276,6 @@ let improveWireOrder (channel: BoundingBox) (wireSpacings: list<float>) (wires: 
                 match wiresToSwap with 
                     | hd::tl -> (hd,tl)
                     | [] -> failwithf "shouldn't ever happen"
-                    | _ -> failwithf "should'ev been hd::tl assigned"
         
             let (leftId, rightId) = hd
             let oldMinimum = getMinimumSpacing actualWireSpacings
