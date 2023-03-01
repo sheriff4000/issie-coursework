@@ -96,7 +96,7 @@ let unionBoxLines (box1: boxLines) (newBoxes: boxLines list) =
         H = botLeft.Y - topLeft.Y;
         W = topRight.X - topLeft.X
     }
-
+/// converts a wire to a map of index and line segments, allowing a simple translation between segment index and its corresponding lineSegment
 let WireToLineSegs (wire: Wire) = 
     segmentsToIssieVertices wire.Segments wire
     |> List.map (fun (x,y,_) -> {X = x; Y = y})
@@ -106,7 +106,8 @@ let WireToLineSegs (wire: Wire) =
     //|> List.filter (fun (idx,_) -> idx = 0 )
     |> Map.ofList
 
-///finds the intersection between two lineSegs if it exists -> could be made more accessible to others in group phase
+///finds the intersection between two LineSegs if it exists -> could be made more accessible to others in group phase
+/// by taking startPoint and endPoint for both wires, no need right now though
 let LineSegIntersect (l1: LineSeg) (l2: LineSeg) : XYPos Option = 
     let dx1 = l1.finish.X - l1.start.X 
     let dy1 = l1.finish.Y - l1.start.Y
@@ -126,7 +127,7 @@ let LineSegIntersect (l1: LineSeg) (l2: LineSeg) : XYPos Option =
         else
             None
 
-/// calculates the distance a wire needs to move in order to avoid it
+/// calculates the distance a wiresegment needs to move in order to avoid it
 let LineMove (box: BoundingBox) (line: LineSeg) =
     let distToCentre = segmentIntersectsBoundingBox box line.start line.finish
     if  Option.isNone distToCentre then
@@ -219,8 +220,7 @@ let addFakeSegs (addType: AddSegType) (wire: Wire) (idx: int) (intersect: Inters
             boxSegLen + nextLen
         else 
             prevLen + boxSegLen
-
-    let defaultSeg = {segments[idx-1] with Length = 0.; Mode = Auto}
+    let defaultSeg = {segments[idx-1] with Length = 1.; Mode = Auto}
     let newSegs = 
         if addType <> Neither then 
             segments[..(idx-1)] 
@@ -241,34 +241,34 @@ let addFakeSegs (addType: AddSegType) (wire: Wire) (idx: int) (intersect: Inters
     
     {wire with Segments = mappedSegs}, newIdx
 
-let moveSeg2 (model:Model) (seg:Segment) (distance:float) (intersect: Intersect) = 
-    let wire = model.Wires[seg.WireId]
-    let segments = wire.Segments
-    let idx = seg.Index
-    if idx = 0 then // Should never happen
-        printfn $"Trying to move wire segment {seg.Index}:{logSegmentId seg}, out of range in wire length {segments.Length}, adding segments next" |> ignore
-        let longerWire, _ = addFakeSegs Previous wire idx intersect
-        longerWire
-    elif idx = segments.Length - 1 then
-        printfn $"Trying to move wire segment {seg.Index}:{logSegmentId seg}, out of range in wire length {segments.Length}, adding segments previous"
-        let longerWire, _ = addFakeSegs Next wire idx intersect
-        longerWire
-    elif idx < 0 || idx > segments.Length - 1 then 
-        printfn "bad things" |> ignore
-        wire
-    else
-        let safeDistance = getSafeDistanceForMove segments idx distance
-        let prevSeg = segments[idx - 1]
-        let nextSeg = segments[idx + 1]
-        let movedSeg = segments[idx]
+// let moveSeg2 (model:Model) (seg:Segment) (distance:float) (intersect: Intersect) = 
+//     let wire = model.Wires[seg.WireId]
+//     let segments = wire.Segments
+//     let idx = seg.Index
+//     if idx = 0 then // Should never happen
+//         printfn $"Trying to move wire segment {seg.Index}:{logSegmentId seg}, out of range in wire length {segments.Length}, adding segments next" |> ignore
+//         let longerWire, _ = addFakeSegs Previous wire idx intersect
+//         longerWire
+//     elif idx = segments.Length - 1 then
+//         printfn $"Trying to move wire segment {seg.Index}:{logSegmentId seg}, out of range in wire length {segments.Length}, adding segments previous"
+//         let longerWire, _ = addFakeSegs Next wire idx intersect
+//         longerWire
+//     elif idx < 0 || idx > segments.Length - 1 then 
+//         printfn "bad things" |> ignore
+//         wire
+//     else
+//         let safeDistance = getSafeDistanceForMove segments idx distance
+//         let prevSeg = segments[idx - 1]
+//         let nextSeg = segments[idx + 1]
+//         let movedSeg = segments[idx]
 
-        let newPrevSeg = { prevSeg with Length = prevSeg.Length + safeDistance } 
-        let newNextSeg = { nextSeg with Length = nextSeg.Length - safeDistance }
-        let newMovedSeg = { movedSeg with Mode = Manual }
-        let newSegments = 
-            segments[.. idx - 2] @ [newPrevSeg; newMovedSeg; newNextSeg] @ segments[idx + 2 ..]
+//         let newPrevSeg = { prevSeg with Length = prevSeg.Length + safeDistance } 
+//         let newNextSeg = { nextSeg with Length = nextSeg.Length - safeDistance }
+//         let newMovedSeg = { movedSeg with Mode = Manual }
+//         let newSegments = 
+//             segments[.. idx - 2] @ [newPrevSeg; newMovedSeg; newNextSeg] @ segments[idx + 2 ..]
 
-        { wire with Segments = newSegments }
+//         { wire with Segments = newSegments }
 
 let smartAutoroute (model: Model) (wire: Wire): Wire = 
     let segments = wire.Segments
@@ -306,6 +306,7 @@ let smartAutoroute (model: Model) (wire: Wire): Wire =
     |> List.map intersectPrinter
     |> ignore
 
+    /// recursive function to iterate through and handle intersects one at a time
     let rec wireRecursive currWire (intersects: Intersect list) = 
         let currIntersects = getIntersects model currWire
         /// contradiction is true when the previous change resulted in a separate intersection 
@@ -338,7 +339,15 @@ let smartAutoroute (model: Model) (wire: Wire): Wire =
                     printfn $"beta new seg list = {longerWire.Segments.Length} " |> ignore
                     let newWire = 
                         //moveSegment model longerWire.Segments[newSegIdx] dist
-                        moveSeg2 model longerWire.Segments[newSegIdx] dist intersect
+                        if newSegIdx = 0 then 
+                            let tmpWire, tmpIdx = addFakeSegs Previous longerWire newSegIdx intersect
+                            moveSegment model tmpWire.Segments[tmpIdx] dist //intersect
+                        elif newSegIdx = longerWire.Segments.Length-1 then
+                            let tmpWire, tmpIdx = addFakeSegs Next longerWire newSegIdx intersect
+                            moveSegment model tmpWire.Segments[tmpIdx] dist //intersect
+                        else
+                            moveSegment model longerWire.Segments[newSegIdx] dist
+
                     let newIntersect =
                         if contradiction then 
                             let newIntersects = SmartHelpers.listDifference currIntersects intersects
@@ -347,8 +356,7 @@ let smartAutoroute (model: Model) (wire: Wire): Wire =
                             printfn $"alpha oldIntersects length {List.length oldIntersects}"
                             printfn $"alpha contradiction with intersect {newIntersects[0].intersectType}" |> ignore
                             let unionBox = 
-                                //if (List.length newIntersects = 1) && (List.length oldIntersects = 1) then
-                                if not (List.isEmpty newIntersects) then  //&& not (List.isEmpty oldIntersects) then
+                                if not (List.isEmpty newIntersects) then
                                     Some (unionBoxLines intersect.box (List.map (fun x->x.box ) newIntersects))
                                 else
                                     None
