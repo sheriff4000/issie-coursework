@@ -180,7 +180,6 @@ let getPortPositionFromTopOrLeft
     (symbol: Symbol)
     (wire: Wire)
     : int option =
-    printfn "%A" wire
     let portId =
         if isSymbolInputForWire symbol wire
         then string wire.InputPort

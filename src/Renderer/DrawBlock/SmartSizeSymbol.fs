@@ -89,8 +89,6 @@ let resizeAndShift
 
     let connectionIds2 = getConnectedWireIds wModel [symbolToSize.Id;]
 
-    printfn "%A" symbolToSize
-
     let wires' =
         wModel.Wires
         |> Map.map (fun id wire ->
