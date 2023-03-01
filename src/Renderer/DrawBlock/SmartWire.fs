@@ -182,7 +182,8 @@ let addFakeSegs (addType: AddSegType) (wire: Wire) (idx: int) (intersect: Inters
     let segments = wire.Segments
     let totalLen = segments[idx].Length
     let vertIntersect = getSegmentOrientation initStart initFinish = Vertical
-
+    if addType <> Neither then
+        printfn $"beta adding fakeSegs Type = {addType}, index = {idx} " |> ignore
     let prevLen, nextLen =
         if vertIntersect then
             let startToBottom = intersect.box.bottom.start.Y+wireOffset-initStart.Y
@@ -204,7 +205,6 @@ let addFakeSegs (addType: AddSegType) (wire: Wire) (idx: int) (intersect: Inters
                 startToLeft, rightToFinish
             else
                 startToRight, leftToFinish
-            
     let boxSegLen = 
         let doubleOffset = (2.0*wireOffset)
         if vertIntersect then
@@ -225,16 +225,14 @@ let addFakeSegs (addType: AddSegType) (wire: Wire) (idx: int) (intersect: Inters
         if addType <> Neither then 
             segments[..(idx-1)] 
             @ if (addType = Previous || addType = Both) then [{defaultSeg with Length = prevLen}] @ [defaultSeg] else []
-            @ [{segments[idx] with Length = midLen}] 
+            @ [{segments[idx] with Length = midLen; Mode = Auto}] 
             @ if (addType = Next || addType = Both) then [defaultSeg] @ [{defaultSeg with Length = nextLen}] else []
             @ segments[(idx+1)..]
         else
             segments
-
     let mappedSegs = 
         newSegs
         |> List.mapi (fun idx seg -> {seg with Index = idx})
-
     let newIdx = 
         if addType = Both || addType = Previous then 
             idx + 2
@@ -247,7 +245,6 @@ let moveSeg2 (model:Model) (seg:Segment) (distance:float) (intersect: Intersect)
     let wire = model.Wires[seg.WireId]
     let segments = wire.Segments
     let idx = seg.Index
-
     if idx = 0 then // Should never happen
         printfn $"Trying to move wire segment {seg.Index}:{logSegmentId seg}, out of range in wire length {segments.Length}, adding segments next" |> ignore
         let longerWire, _ = addFakeSegs Previous wire idx intersect
@@ -336,17 +333,16 @@ let smartAutoroute (model: Model) (wire: Wire): Wire =
                             else Neither
                         else
                             Both
-                    printfn $"alpha add type = {addType} need linemove of {dist}" |> ignore
+                    printfn $"beta alpha add type = {addType} need linemove of {dist}" |> ignore
                     let longerWire, newSegIdx = addFakeSegs addType currWire segIndex intersect
+                    printfn $"beta new seg list = {longerWire.Segments.Length} " |> ignore
                     let newWire = 
                         //moveSegment model longerWire.Segments[newSegIdx] dist
                         moveSeg2 model longerWire.Segments[newSegIdx] dist intersect
                     let newIntersect =
                         if contradiction then 
-
                             let newIntersects = SmartHelpers.listDifference currIntersects intersects
                             printfn $"alpha newIntersects length {List.length newIntersects}" |> ignore
-
                             let oldIntersects = SmartHelpers.listDifference intersects currIntersects
                             printfn $"alpha oldIntersects length {List.length oldIntersects}"
                             printfn $"alpha contradiction with intersect {newIntersects[0].intersectType}" |> ignore
@@ -367,8 +363,6 @@ let smartAutoroute (model: Model) (wire: Wire): Wire =
                         wireRecursive newWire (newIntersect::(List.tail intersects))
                     else    
                         wireRecursive newWire (List.tail intersects)
-
-
                 | [] -> currWire
     
     if not (List.isEmpty initIntersects) && startPos = segMap[0].start && destPos = segMap[(Map.count segMap) - 1].finish then 
