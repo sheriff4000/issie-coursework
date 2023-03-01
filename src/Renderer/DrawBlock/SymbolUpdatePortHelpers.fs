@@ -170,13 +170,15 @@ let getCloseByEdge (sym:Symbol) (mousePos:XYPos) : Option<Edge> =
     let mouseOffset = mousePos - sym.Pos
     let minX = min (abs mouseOffset.X) (abs w-mouseOffset.X)
     let outMargin = 60.  //how many pixels outside the symbol the port can be when moving it
-    
+    printfn $"mouseOffset {mouseOffset}"
+    printfn $"w{w}"
     // Top Edge
     if ((-outMargin <= mouseOffset.Y) && (mouseOffset.Y <= (minX*tanTheta)) && ((-outMargin <= mouseOffset.X)) && ((w+outMargin) >= mouseOffset.X)) then Some Top
     // Bottom Edge
     elif (((h+outMargin) >= mouseOffset.Y) && (mouseOffset.Y >= (h - minX*tanTheta)) && ((-outMargin <= mouseOffset.X)) && ((w+outMargin) >= mouseOffset.X)) then Some Bottom
     // Away from symbol -> None
-    elif ((-outMargin >= mouseOffset.Y) ||  ((h+outMargin) <= mouseOffset.Y) || (-outMargin >= mouseOffset.X) ||  ((w+outMargin) <= mouseOffset.X)) then None
+    elif ((-outMargin >= mouseOffset.Y) ||  ((h+outMargin) <= mouseOffset.Y) || (-outMargin >= mouseOffset.X) ||  ((w+outMargin) <= mouseOffset.X)) then printf "HERE ORANGE"
+                                                                                                                                                         None
     // Left Edge
     elif (-outMargin <= mouseOffset.X) && (mouseOffset.X <= (w/2.0)) then Some Left
     // Right Edge
