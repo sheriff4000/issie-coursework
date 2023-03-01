@@ -178,7 +178,7 @@ let reOrderPorts
             then 
                 printfn "REPEAT LOOP"
                 (helpers.UpdateSymbolWires ({wModel with Symbol = {sModel with Symbols = Map.add newSymbol.Id newSymbol sModel.Symbols}})  symbolToOrder.Id)
-                |> SmartHelpers.getConnectedWires [] 0 symbolToOrder otherSymbol
+                |> SmartHelpers.getConnectedWires symbolToOrder otherSymbol
                 
             else 
                 wireList
@@ -196,9 +196,8 @@ let reOrderPorts
     let componentList = [symbolToOrder.Id; otherSymbol.Id]
     
     
-    let initialList: Wire List = []
-    let initialIndex = 0
-    let wires: Wire List = SmartHelpers.getConnectedWires initialList initialIndex symbolToOrder otherSymbol wModel    
+   
+    let wires: Wire List = SmartHelpers.getConnectedWires symbolToOrder otherSymbol wModel    
         
     let isInterconnected2 (fstWire,sndWire)=
         let fstWireAseg = BusWire.getAbsSegments fstWire
@@ -256,7 +255,7 @@ let reOrderPorts
         SymbolUpdatePortHelpers.updatePortPos symbol newPosition portId
     
     let connectedPorts (symbol1: Symbol) (symbol2: Symbol) (model: SymbolT.Model) (wireModel: Model)=
-        let wires = SmartHelpers.getConnectedWires [] 0 symbol1 symbol2 wireModel
+        let wires = SmartHelpers.getConnectedWires symbol1 symbol2 wireModel
         List.map (getPortFromWire model symbol2) wires
 
     let combineLists (list1: 'a List) (list2: 'a List) = 
@@ -326,11 +325,11 @@ let reOrderPorts
                     | false -> symbol'
                     | true -> 
                               let newSymbol = getAllInterconnected symbol' 0 wires
-                              let newWires = (helpers.UpdateSymbolWires ({wModel with Symbol = {sModel with Symbols = Map.add newSymbol.Id newSymbol sModel.Symbols}})  symbolToOrder.Id) |> SmartHelpers.getConnectedWires [] 0 newSymbol otherSymbol
+                              let newWires = (helpers.UpdateSymbolWires ({wModel with Symbol = {sModel with Symbols = Map.add newSymbol.Id newSymbol sModel.Symbols}})  symbolToOrder.Id) |> SmartHelpers.getConnectedWires newSymbol otherSymbol
                               changeSymbol newSymbol newWires
         | false -> symbol'
     let reOrderPortEdges = List.fold (comparePortEdge otherSymbol sModel) symbolToOrder wires
-    let newWires = (helpers.UpdateSymbolWires ({wModel with Symbol = {sModel with Symbols = Map.add reOrderPortEdges.Id reOrderPortEdges sModel.Symbols}})  symbolToOrder.Id) |> SmartHelpers.getConnectedWires [] 0 reOrderPortEdges otherSymbol
+    let newWires = (helpers.UpdateSymbolWires ({wModel with Symbol = {sModel with Symbols = Map.add reOrderPortEdges.Id reOrderPortEdges sModel.Symbols}})  symbolToOrder.Id) |> SmartHelpers.getConnectedWires reOrderPortEdges otherSymbol
 
     let finalSymbol' = changeSymbol reOrderPortEdges newWires
     let newChangedWires = helpers.UpdateSymbolWires ({wModel with Symbol = {sModel with Symbols = Map.add finalSymbol'.Id finalSymbol' sModel.Symbols}})  symbolToOrder.Id

@@ -183,22 +183,19 @@ let getPortPositionFromLeft
         else Some (index + 1)
         
     else None
+//HLP23: AUTHOR Ewan
+//This function returns a list of all the elements in both input lists
+let combineLists (list1: 'a List) (list2: 'a List) = 
+        printfn $"TESTING {List.allPairs list1 list2}"
+        List.allPairs list1 list2
+        |> List.filter (fun (x,y) -> x = y)
+        |> List.map fst 
 
 //HLP23: AUTHOR Ewan
 //This function returns a list of all the wires connected between two symbols
-//To use, begin with the connectedWire input equalling [] and index equalling 0
+let getConnectedWires (symbol1: Symbol) (symbol2: Symbol) (model:Model) = 
+    let wiresSymbol1 = BusWireUpdateHelpers.getConnectedWires model [symbol1.Id]
+    let wiresSymbol2 = BusWireUpdateHelpers.getConnectedWires model [symbol2.Id]
+    combineLists wiresSymbol1 wiresSymbol2
 
-let rec getConnectedWires (connectedWires: Wire List) index symbol1 symbol2 (model:Model)= 
-                let wiresSymbol1 = BusWireUpdateHelpers.getConnectedWires model [symbol1.Id]
-                let wiresSymbol2 = BusWireUpdateHelpers.getConnectedWires model [symbol2.Id]
-                if index = wiresSymbol1.Length
-                then 
-                    connectedWires
-                else
-                    if List.exists (fun x -> x = wiresSymbol1[index]) wiresSymbol2
-                    then 
-                        let newConnectedWires = List.append connectedWires [wiresSymbol1[index]]
-                        getConnectedWires newConnectedWires (index+1) symbol1 symbol2 model
-                    else 
-                    
-                        getConnectedWires connectedWires (index+1) symbol1 symbol2 model
+
