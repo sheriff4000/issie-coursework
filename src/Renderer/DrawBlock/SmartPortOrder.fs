@@ -42,6 +42,9 @@ let reOrderPorts
         : BusWireT.Model =
     printfn $"ReorderPorts: ToOrder:{symbolToOrder.Component.Label}, Other:{otherSymbol.Component.Label}"
     let sModel = wModel.Symbol
+
+    let updateWires (symbol:Symbol) (model:Model) (originalSymbol:Symbol) = 
+        (helpers.UpdateSymbolWires ({model with Symbol = {model.Symbol with Symbols = Map.add symbol.Id symbol model.Symbol.Symbols}})  originalSymbol.Id) 
     
     let swapPorts (symbol:Symbol) (port1:Port) (port2:Port) =
         let newPos = symbol.Pos + (getPortPos symbol port2)
@@ -99,8 +102,7 @@ let reOrderPorts
             let changeSymbol = swapInterconnectedPorts model.Symbol model.Symbol.Symbols[symbol1.Id] pair
             if changeSymbol <> model.Symbol.Symbols[symbol1.Id]
             then 
-                let newWireModel = (helpers.UpdateSymbolWires ({model with Symbol = {model.Symbol with Symbols = Map.add changeSymbol.Id changeSymbol model.Symbol.Symbols}})  symbolToOrder.Id)
-  
+                let newWireModel = updateWires changeSymbol model symbolToOrder
                 let newWireList = 
                                   newWireModel
                                   |> SmartHelpers.getConnectedWires symbolToOrder otherSymbol
@@ -212,14 +214,14 @@ let reOrderPorts
             //incorrect port indexing order
             true
 
-
+    
     let rec changeSymbol (symbol':Symbol) (wires:Wire List) (model:Model)(n: int) = 
         if n > Constants.recursionLimit
         then symbol'
         else 
             match anyInterconnected wires with
             | true -> 
-                      match (checkPortPositions wires symbol' (helpers.UpdateSymbolWires ({model with Symbol = {model.Symbol with Symbols = Map.add symbol'.Id symbol' model.Symbol.Symbols}})  symbol'.Id).Symbol) with
+                      match (checkPortPositions wires symbol' (updateWires symbol' model symbolToOrder).Symbol) with
                                 | false -> symbol'
                                 | true -> 
                                           let newWireModel = getAllInterconnected model symbol' wires
@@ -231,8 +233,8 @@ let reOrderPorts
         match anyInterconnected wires with
         | true -> List.fold (comparePortEdge otherSymbol sModel) symbolToOrder wires
         | false -> symbolToOrder
-    let newWireModel = (helpers.UpdateSymbolWires ({wModel with Symbol = {sModel with Symbols = Map.add reOrderPortEdges.Id reOrderPortEdges sModel.Symbols}})  symbolToOrder.Id) 
-
+    
+    let newWireModel = updateWires reOrderPortEdges wModel symbolToOrder
 
     let changedModel = {wModel with 
                             Wires = newWireModel.Wires
@@ -241,9 +243,10 @@ let reOrderPorts
     let newWires = changedModel|> SmartHelpers.getConnectedWires reOrderPortEdges otherSymbol
 
     let finalSymbol' = changeSymbol reOrderPortEdges newWires changedModel 0
-    let newChangedWires = helpers.UpdateSymbolWires ({changedModel with Symbol = {changedModel.Symbol with Symbols = Map.add finalSymbol'.Id finalSymbol' changedModel.Symbol.Symbols}})  symbolToOrder.Id
+    
+    let newChangedWires = updateWires finalSymbol' changedModel symbolToOrder
 
     {wModel with 
         Wires = newChangedWires.Wires
         Symbol = {sModel with Symbols = Map.add finalSymbol'.Id finalSymbol' sModel.Symbols}
-    }  
+    }   
