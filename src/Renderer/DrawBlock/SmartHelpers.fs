@@ -273,6 +273,18 @@ let getPortFromWire (model: SymbolT.Model)(symbol:Symbol) (wire:Wire)=
         else 
             Symbol.getPort model outputPort
 
+//HLP23: AUTHOR Ewan
+//Given a wire connected to a symbol, returns the second symbol
+let getSymbolFromWire (model: SymbolT.Model) (symbol:Symbol) (wire:Wire) = 
+    //checks if input or output port
+    //use Symbol.getSymbol
+    //getPortFromWire returns a port - i need the portid for the second symbol
+    if (getPortFromWire model symbol wire).Id <> Symbol.getInputPortIdStr (wire.InputPort)
+    then
+        Symbol.getSymbol model (Symbol.getOutputPortIdStr (wire.OutputPort))
+    else
+        Symbol.getSymbol model (Symbol.getInputPortIdStr (wire.InputPort))
+
 
 //HLP23: AUTHOR Ewan
 //Returns true if two wires are intersecting each other and false if they are not
