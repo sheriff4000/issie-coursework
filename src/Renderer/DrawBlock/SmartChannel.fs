@@ -338,7 +338,7 @@ let smartChannelRoute //spaces wires evenly
         //doesn't always deal with effectively
         let newOrder = improveWireOrder channel wireSpacings straightenedModel.Wires sortedWireIdsInChannel
         //moves wires to their associated spacing, or as close as possible to it if not possible
-        {straightenedModel with Wires = moveWires channelOrientation straightenedModel.Wires wireSpacings sortedWireIdsInChannel}
+        {straightenedModel with Wires = moveWires channelOrientation straightenedModel.Wires wireSpacings newOrder}
     else    
         //moves wires to their associated spacing, or as close as pottible to it if not possible
         {straightenedModel with Wires = moveWires channelOrientation straightenedModel.Wires wireSpacings sortedWireIdsInChannel}
