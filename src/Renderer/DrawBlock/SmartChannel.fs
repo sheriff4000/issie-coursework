@@ -65,7 +65,7 @@ let getInOutSegments (wire:Wire) (channel: BoundingBox) =
                     [Right]
                 else 
                     []
-            line * (topOut @ botOut @ leftOut @ rightOut)
+            line , (topOut @ botOut @ leftOut @ rightOut)
 
         let intersectList =
             (List.ofSeq (Map.values segMap))
