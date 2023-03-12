@@ -64,6 +64,72 @@ let smartChannelRoute //spaces wires evenly
     ///     - getWireSpacings -> determines the y value each straightened channel section should be at (AJ)
     ///     - moveWires -> moves the straightened sections to these y values. (AJ)
 
+    
+    let getInOutSegments (wire:Wire) =
+        let segMap = WireToLineSegs wire
+        let channelBox = boundingBoxToBoxLines channel
+        let channelIntersects (line: LineSeg) = 
+            let topIntersect = LineSegIntersect channelBox.top line
+            let leftIntersect = LineSegIntersect channelBox.left line
+            let botIntersect = LineSegIntersect channelBox.bottom line
+            let rightIntersect = LineSegIntersect channelBox.right line
+            let topOut = 
+                // if Option.isSome topIntersect then
+                //     [Top]
+                // else 
+                []
+            let botOut = 
+                // if Option.isSome botIntersect then
+                //     [Bottom]
+                // else 
+                []
+            let leftOut = 
+                if Option.isSome leftIntersect then
+                    [Left]
+                else 
+                    []
+            let rightOut = 
+                if Option.isSome rightIntersect then
+                    [Right]
+                else 
+                    []
+            line * (topOut @ botOut @ leftOut @ rightOut)
+
+        let intersectList =
+            (List.ofSeq (Map.values segMap))
+            |> List.map channelIntersects
+            |> List.filter (fun (_::list) -> list <> [])
+
+        let rec leftSeg = 
+            match intersectList with
+                | (line, edges)::tl -> 
+                    if Option.isSome (List.tryFind (fun el -> el = Left)) then
+                        Map.FindKey line segMap
+                    else 
+                        leftSeg tl
+                | [] -> failwithf "no left segment"
+
+        let rec rightSeg = 
+            match intersectList with
+                | (line, edges)::tl -> 
+                    if Option.isSome (List.tryFind (fun el -> el = Right)) then
+                        Map.FindKey line segMap
+                    else 
+                        rightSeg tl
+                | [] -> failwithf "no right segment"
+
+        let startSeg = min leftSeg rightSeg
+        let endSeg = max leftSeg rightSeg
+
+        startSeg, endSeg
+
+    let straightenWire (wire: Wire) startIdx endIdx =
+        let segments = wire.Segments
+        let segMap = WireToLineSegs wire
+
+        
+
+        
 
     //for a horizontal channel, adjusts wires so that only one horizontal segment in a wire runs through the channel. 
     let straightenedModel = straightenHorizontalWires channel channelOrientation model sortedWireIdsInChannel

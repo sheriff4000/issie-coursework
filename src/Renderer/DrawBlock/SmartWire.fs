@@ -6,63 +6,24 @@ open DrawModelType.SymbolT
 open DrawModelType.BusWireT
 open BusWire
 open BusWireUpdateHelpers
+open SmartHelpers
 
 open Optics
 open Operators
 
 ///HLP23: Sherif
-type LineSeg = 
-    {
-        start: XYPos
-        finish: XYPos
-    }
-    // since only either horizontal or vertical, can add differences
-    member this.length = (this.finish.X-this.start.X) + (this.finish.Y-this.start.Y)  
+
 /// used in preference to boundingBox as it can be easier for intersect detections
-type boxLines =
-    {
-        top: LineSeg
-        bottom: LineSeg
-        left: LineSeg
-        right: LineSeg
-        W: float
-        H: float
-    }
+
 type AddSegType = Previous | Next | Both | Neither
 
 /// further work: consider adding attributes inType: Edge and outType: Edge to enable special routing 
 /// for different types of intersects
-type Intersect = {
-    box: boxLines
-    line: LineSeg 
-    intersectType: Edge
-    position: XYPos
-    }
+
 /// wire offset defines how close a wire can be to a component
 let wireOffset = 10.
 
-/// -----------------------------------------------------------------------
-/// these functions convert between my boxLines and the more widely used boundingBox,
-/// allowing the sharing of functions between the two
-let boundingBoxToBoxLines (box: BoundingBox) = 
-    let topRight = {Y = box.TopLeft.Y; X = box.TopLeft.X + box.W}
-    let botLeft = {X = box.TopLeft.X; Y = box.TopLeft.Y+box.H}
-    let botRight = {X = box.TopLeft.X + box.W; Y = box.TopLeft.Y+box.H}
-    let topLeft = box.TopLeft
 
-    {top = {start = topLeft; finish = topRight}; 
-        bottom = {start = botLeft; finish = botRight}; 
-        left = {start = topLeft; finish = botLeft}; 
-        right = {start = topRight; finish = botRight};
-        H = botLeft.Y - topLeft.Y;
-        W = topRight.X - topLeft.X
-    }
-
-let boxLinesToBoundingBox (box: boxLines) = 
-    {TopLeft = box.top.start;
-    H = box.left.finish.Y-box.left.start.Y;
-    W = box.top.finish.X - box.top.start.X}
-/// -------------------------------------------------------------------------
 
 ///this function converts a component to the boxLines format 
 let ComponentToBox (comp: Component) =
@@ -97,36 +58,9 @@ let unionBoxLines (box1: boxLines) (newBoxes: boxLines list) =
         H = botLeft.Y - topLeft.Y;
         W = topRight.X - topLeft.X
     }
-/// converts a wire to a map of index and line segments, allowing a simple translation between segment index and its corresponding lineSegment
-let WireToLineSegs (wire: Wire) = 
-    segmentsToIssieVertices wire.Segments wire
-    |> List.map (fun (x,y,_) -> {X = x; Y = y})
-    |> List.pairwise
-    |> List.map (fun (startpoint,endpoint) -> {start = startpoint; finish = endpoint})
-    |> List.mapi (fun idx line -> (idx, line))
-    //|> List.filter (fun (idx,_) -> idx = 0 )
-    |> Map.ofList
 
-///finds the intersection between two LineSegs if it exists -> could be made more accessible to others in group phase
-/// by taking startPoint and endPoint for both wires, no need right now though
-let LineSegIntersect (l1: LineSeg) (l2: LineSeg) : XYPos Option = 
-    let dx1 = l1.finish.X - l1.start.X 
-    let dy1 = l1.finish.Y - l1.start.Y
-    let dx2 = l2.finish.X - l2.start.X 
-    let dy2 = l2.finish.Y - l2.start.Y
 
-    if (dx1 = 0 && dx2 = 0) || (dy1 = 0 && dy2 = 0) then //if both horizontal or both vertical
-        None
-    else
-        let h, v = if l1.start.Y = l1.finish.Y then (l1, l2) else (l2, l1)
-        let minX = min h.start.X h.finish.X
-        let maxX = max h.start.X h.finish.X
-        let minY = min v.start.Y v.finish.Y
-        let maxY = max v.start.Y v.finish.Y
-        if v.start.X >= minX && v.start.X <= maxX && h.start.Y >= minY && h.start.Y <= maxY then
-            Some { X = v.start.X; Y = h.start.Y}
-        else
-            None
+
 
 /// calculates the distance a wiresegment needs to move in order to avoid it
 let LineMove (box: BoundingBox) (line: LineSeg) =
@@ -248,7 +182,7 @@ let smartAutoroute (model: Model) (wire: Wire): Wire =
     let getIntersects model wire = 
         
         let componentBoxes = 
-            SmartHelpers.getComponentInfo model
+            getComponentInfo model
             |> Map.values
             |> List.ofSeq
             |> List.map ComponentToBox
