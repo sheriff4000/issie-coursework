@@ -37,6 +37,64 @@ let getWiresInChannel (model: Model) (channel: BoundingBox) : List<ConnectionId>
     //returns a list of all wire id's in a channel
     failwithf("not implemented yet")
 
+let getInOutSegments (wire:Wire) (channel: BoundingBox) =
+        let segMap = WireToLineSegs wire
+        let channelBox = boundingBoxToBoxLines channel
+        let channelIntersects (line: LineSeg) = 
+            let topIntersect = LineSegIntersect channelBox.top line
+            let leftIntersect = LineSegIntersect channelBox.left line
+            let botIntersect = LineSegIntersect channelBox.bottom line
+            let rightIntersect = LineSegIntersect channelBox.right line
+            let topOut = 
+                // if Option.isSome topIntersect then
+                //     [Top]
+                // else 
+                []
+            let botOut = 
+                // if Option.isSome botIntersect then
+                //     [Bottom]
+                // else 
+                []
+            let leftOut = 
+                if Option.isSome leftIntersect then
+                    [Left]
+                else 
+                    []
+            let rightOut = 
+                if Option.isSome rightIntersect then
+                    [Right]
+                else 
+                    []
+            line * (topOut @ botOut @ leftOut @ rightOut)
+
+        let intersectList =
+            (List.ofSeq (Map.values segMap))
+            |> List.map channelIntersects
+            |> List.filter (fun (_::list) -> list <> [])
+
+        let rec leftSeg = 
+            match intersectList with
+                | (line, edges)::tl -> 
+                    if Option.isSome (List.tryFind (fun el -> el = Left)) then
+                       Some (Map.FindKey line segMap)
+                    else 
+                        leftSeg tl
+                | [] -> None
+
+        let rec rightSeg = 
+            match intersectList with
+                | (line, edges)::tl -> 
+                    if Option.isSome (List.tryFind (fun el -> el = Right)) then
+                       Some  (Map.FindKey line segMap)
+                    else 
+                        rightSeg tl
+                | [] -> None 
+
+        let startSeg = min leftSeg rightSeg
+        let endSeg = max leftSeg rightSeg
+
+        startSeg, endSeg
+
 let getStartSegment (model: Model) (channel: BoundingBox) (wire: ConnectionId): int = 
     //TO BE IMPLEMENTED BY SHERIF
     //returns the start horizontal segment
