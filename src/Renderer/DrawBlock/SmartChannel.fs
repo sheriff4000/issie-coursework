@@ -38,11 +38,18 @@ let getWiresInChannel (model: Model) (channel: BoundingBox) : List<ConnectionId>
     failwithf("not implemented yet")
 
 let getStartSegment (model: Model) (channel: BoundingBox) (wire: ConnectionId): int = 
-    //TO BE IMPLEMENTED
+    //TO BE IMPLEMENTED BY SHERIF
     //returns the start horizontal segment
-    
+    failwithf("not implemented yet")
 
+let getEndSegment (model: Model) (channel: BoundingBox) (wire: ConnectionId): int = 
+    //TO BE IMPLEMENTED BY SHERIF
+    //returns the start horizontal segment
+    failwithf("not implemented yet")
 
+let straightenWire (model: Model) (wire: ConnectionId) (startSegment: int) (endSegment: int) : Wire = 
+    //TO BE IMPLEMENTED BY SHERIF
+    failwithf("not implemented yet")
 
 
 let smartChannelRoute //spaces wires evenly 
