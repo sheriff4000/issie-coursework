@@ -37,7 +37,7 @@ let getWiresInChannel (model: Model) (channel: BoundingBox) : List<ConnectionId>
     //returns a list of all wire id's in a channel
     failwithf("not implemented yet")
 
-let getInOutSegments (wire:Wire) (channel: BoundingBox)  : LineSeg * Edge list=
+let getInOutSegments (wire:Wire) (channel: BoundingBox) =
         let segMap = WireToLineSegs wire
         let channelBox = boundingBoxToBoxLines channel
         let channelIntersects (line: LineSeg) = 
@@ -45,24 +45,24 @@ let getInOutSegments (wire:Wire) (channel: BoundingBox)  : LineSeg * Edge list=
             let leftIntersect = LineSegIntersect channelBox.left line
             let botIntersect = LineSegIntersect channelBox.bottom line
             let rightIntersect = LineSegIntersect channelBox.right line
-            let topOut = 
-                // if Option.isSome topIntersect then
-                //     [Top]
-                // else 
-                []
-            let botOut = 
-                // if Option.isSome botIntersect then
-                //     [Bottom]
-                // else 
-                []
-            let leftOut = 
-                if Option.isSome leftIntersect then
-                    [Left]
+            let topOut : Edge list = 
+                if Option.isSome topIntersect then
+                    [Top]
                 else 
                     []
-            let rightOut = 
+            let botOut : Edge list = 
+                if Option.isSome botIntersect then
+                    [Bottom]
+                else 
+                    []
+            let leftOut : Edge list = 
+                if Option.isSome leftIntersect then
+                    [Edge.Left]
+                else 
+                    []
+            let rightOut : Edge list = 
                 if Option.isSome rightIntersect then
-                    [Right]
+                    [Edge.Right]
                 else 
                     []
             line , (topOut @ botOut @ leftOut @ rightOut)
@@ -70,30 +70,31 @@ let getInOutSegments (wire:Wire) (channel: BoundingBox)  : LineSeg * Edge list=
         let intersectList =
             (List.ofSeq (Map.values segMap))
             |> List.map channelIntersects
-            |> List.filter (fun (_::list) -> list <> [])
+            |> List.filter (fun (_,list) -> list <> [])
 
-        let rec leftSeg = 
-            match intersectList with
+        let rec leftSeg (intersects: (LineSeg * Edge list) list) = 
+            match intersects with
                 | (line, edges)::tl -> 
-                    if Option.isSome (List.tryFind (fun el -> el = Left)) then
-                       Some (Map.FindKey line segMap)
+                    if Option.isSome (List.tryFind (fun (el: Edge) -> el = Edge.Left) edges) then
+                       Some (Map.findKey (fun _ v -> v =line) segMap)
                     else 
                         leftSeg tl
                 | [] -> None
 
-        let rec rightSeg = 
+        let rec rightSeg (intersects: (LineSeg * Edge list) list) = 
             match intersectList with
                 | (line, edges)::tl -> 
-                    if Option.isSome (List.tryFind (fun el -> el = Right)) then
-                       Some  (Map.FindKey line segMap)
+                    if Option.isSome (List.tryFind (fun (el: Edge) -> el = Edge.Right) edges) then
+                       Some  (Map.findKey (fun _ v -> v =line) segMap)
                     else 
                         rightSeg tl
                 | [] -> None 
 
-        let startSeg = min leftSeg rightSeg
-        let endSeg = max leftSeg rightSeg
+        let finalLeft = leftSeg intersectList
+        let finalRight = rightSeg intersectList
 
-        startSeg, endSeg
+
+        finalLeft, finalRight
 
 let getStartSegment (model: Model) (channel: BoundingBox) (wire: ConnectionId): int = 
     //TO BE IMPLEMENTED BY SHERIF
