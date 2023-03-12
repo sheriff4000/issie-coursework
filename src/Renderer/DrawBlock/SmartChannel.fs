@@ -37,7 +37,7 @@ let getWiresInChannel (model: Model) (channel: BoundingBox) : List<ConnectionId>
     //returns a list of all wire id's in a channel
     failwithf("not implemented yet")
 
-let getInOutSegments (wire:Wire) (channel: BoundingBox) =
+let getInOutSegments (wire:Wire) (channel: BoundingBox)  : LineSeg * Edge list=
         let segMap = WireToLineSegs wire
         let channelBox = boundingBoxToBoxLines channel
         let channelIntersects (line: LineSeg) = 
