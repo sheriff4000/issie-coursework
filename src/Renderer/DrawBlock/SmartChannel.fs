@@ -32,10 +32,31 @@ type BoxSides = {
 
 type MovementDirection = Left | Right 
 
+let getSidesOfChannel (channel: BoundingBox) = 
+    //takes a bounding box and returns a BoxSides record 
+    let right = channel.TopLeft.X + channel.W
+    let top = channel.TopLeft.Y
+    let left = channel.TopLeft.X
+    let bottom = top + channel.H
+    {
+        Left = left; 
+        Top = top; 
+        Bottom = bottom; 
+        Right = right
+    }
+
 let getWiresInChannel (model: Model) (channel: BoundingBox) : List<ConnectionId> = 
-    //TO BE IMPLEMENTED
-    //returns a list of all wire id's in a channel
-    failwithf("not implemented yet")
+    let checkWireInChannel (channel: BoundingBox) (wire: Wire)  = // checks if a wire is in a channel (returns a bool)
+        
+        let boxSides = getSidesOfChannel channel
+        //check whether the x values are valid
+        let wireX = getXOfVerticalSegmentWire wire
+        let validX = (wireX > boxSides.Left) && (wireX < boxSides.Right)
+        //check whether the y values are valid
+        let wireTopY, wireBottomY = getYOfVerticalSegmentWire wire
+        let validY = (wireTopY < boxSides.Bottom) && (wireBottomY > boxSides.Top)
+        //check if the whole wire segment is valid
+        (validX && validY && ((List.length wire.Segments) = 7 ))
 
 let getStartSegment (model: Model) (channel: BoundingBox) (wire: ConnectionId): int = 
     //TO BE IMPLEMENTED BY SHERIF
