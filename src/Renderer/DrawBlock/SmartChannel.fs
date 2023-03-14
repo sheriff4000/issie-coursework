@@ -96,6 +96,17 @@ let getInOutSegments (wire:Wire) (channel: BoundingBox) =
 
         finalLeft, finalRight
 
+let straightenWire (model: Model) (wire: Wire) (startSegment: int) (endSegment: int) : Wire =
+    let startStart, startEnd = getSegPositions wire startSegment
+    let endStart, endEnd = getSegPositions wire endSegment
+
+    if (startStart.Y = startEnd.Y) && (endStart.Y = endEnd.Y) then //if both segments are horizontal
+        let segMove = endStart.Y - startStart.Y
+        moveSegment model wire.Segments[startSegment] segMove
+    else
+        wire
+    
+
 let getStartSegment (model: Model) (channel: BoundingBox) (wire: ConnectionId): int = 
     //TO BE IMPLEMENTED BY SHERIF
     //returns the start horizontal segment
@@ -106,9 +117,9 @@ let getEndSegment (model: Model) (channel: BoundingBox) (wire: ConnectionId): in
     //returns the start horizontal segment
     failwithf("not implemented yet")
 
-let straightenWire (model: Model) (wire: ConnectionId) (startSegment: int) (endSegment: int) : Wire = 
-    //TO BE IMPLEMENTED BY SHERIF
-    failwithf("not implemented yet")
+// let straightenWire (model: Model) (wire: ConnectionId) (startSegment: int) (endSegment: int) : Wire = 
+//     //TO BE IMPLEMENTED BY SHERIF
+//     failwithf("not implemented yet")
 
 
 let smartChannelRoute //spaces wires evenly 

@@ -389,3 +389,7 @@ let LineSegIntersect (l1: LineSeg) (l2: LineSeg) : XYPos Option =
         else
             None              
 
+let getSegPositions wire idx = 
+    let segMap = WireToLineSegs wire
+    let segPositions = segMap[idx]
+    segPositions.start, segPositions.finish

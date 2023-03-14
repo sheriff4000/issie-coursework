@@ -6,6 +6,7 @@ open DrawModelType.SymbolT
 open DrawModelType.BusWireT
 open BusWire
 open BusWireUpdateHelpers
+open SmartHelpers
 
 open Optics
 open Operators
@@ -172,10 +173,7 @@ let SegBoxIntersect (box: boxLines) (line: LineSeg) =
             []
     topOut @ leftOut
 
-let getSegPositions wire idx = 
-    let segMap = WireToLineSegs wire
-    let segPositions = segMap[idx]
-    segPositions.start, segPositions.finish
+
 
 /// This function replaces a wire Segment with either 1, 3 or 5 segments dependent on the addType,
 /// with the intention of making an otherwise immovable segment movable
