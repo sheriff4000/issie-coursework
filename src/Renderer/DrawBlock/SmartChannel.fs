@@ -99,10 +99,18 @@ let getInOutSegments (wire:Wire) (channel: BoundingBox) =
 let straightenWire (model: Model) (wire: Wire) (startSegment: int) (endSegment: int) : Wire =
     let startStart, startEnd = getSegPositions wire startSegment
     let endStart, endEnd = getSegPositions wire endSegment
-
+    let segments = wire.Segments
     if (startStart.Y = startEnd.Y) && (endStart.Y = endEnd.Y) then //if both segments are horizontal
+        
         let segMove = endStart.Y - startStart.Y
-        moveSegment model wire.Segments[startSegment] segMove
+        let horiDist = endStart.X - startEnd.X
+        let newSegments = 
+            [startSegment+1..endSegment-1]
+            |> List.map (fun x -> {segments[x] with Length = 0})
+        let newStartSeg = {segments[startSegment] with Length = segments[startSegment].Length + horiDist}
+        let segList = segments[..startSegment-1] @ [newStartSeg] @ newSegments @ segments[endSegment..]
+        let wireToMove = {wire with Segments = segList}
+        moveSegment model wireToMove.Segments[startSegment] segMove
     else
         wire
     
