@@ -37,7 +37,7 @@ let getWiresInChannel (model: Model) (channel: BoundingBox) : List<ConnectionId>
     //returns a list of all wire id's in a channel
     failwithf("not implemented yet")
 
-let getInOutSegments (wire:Wire) (channel: BoundingBox) =
+let getInOutSegments (wire: Wire) (channel: BoundingBox) =
         let segMap = WireToLineSegs wire
         let channelBox = boundingBoxToBoxLines channel
         let channelIntersects (line: LineSeg) = 
@@ -105,17 +105,13 @@ let straightenWire (model: Model) (wire: Wire) (startSegment: int) (endSegment: 
         moveSegment model wire.Segments[startSegment] segMove
     else
         wire
-    
 
-let getStartSegment (model: Model) (channel: BoundingBox) (wire: ConnectionId): int = 
-    //TO BE IMPLEMENTED BY SHERIF
-    //returns the start horizontal segment
-    failwithf("not implemented yet")
 
-let getEndSegment (model: Model) (channel: BoundingBox) (wire: ConnectionId): int = 
-    //TO BE IMPLEMENTED BY SHERIF
-    //returns the start horizontal segment
-    failwithf("not implemented yet")
+let getWireOrder (model: Model) (wires: list<ConnectionId>) = 
+    let getFinalHeight (wire: Wire) = 
+        
+     
+
 
 // let straightenWire (model: Model) (wire: ConnectionId) (startSegment: int) (endSegment: int) : Wire = 
 //     //TO BE IMPLEMENTED BY SHERIF
