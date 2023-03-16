@@ -21,6 +21,9 @@ open Operators
     this purpose.
 *)
 
+let print x =
+    printfn "%A" x
+
 type BoxSides = { 
 //defines the left x coordinate, right x coordinate, top y coordinate, bottom y coordinate of a bounding box.
         Left: float;
@@ -29,15 +32,27 @@ type BoxSides = {
         Bottom: float
     }
 
+type WireMovementInfo = {
+    Wire: ConnectionId;
+    StartSegment: int;
+    EndSegment: int
+} 
 
 type MovementDirection = Left | Right 
 
-let getWiresInChannel (model: Model) (channel: BoundingBox) : List<ConnectionId> = 
-    //TO BE IMPLEMENTED
-    //returns a list of all wire id's in a channel
-    failwithf("not implemented yet")
+let YCoordinateEachSegment (wire: Wire) =
+    //this can be a smart helper -- make another one for XCoordinate
+    let folder (initialOrientation: Orientation) (state: float) (index:int) (segment: Segment) = 
+        if (index % 2 = 0 && initialOrientation = Vertical) || (index % 2 = 1 && initialOrientation = Horizontal) then
+            state + segment.Length
+        else
+            state
+    wire.Segments
+    |> List.zip [0..(List.length wire.Segments)-1]
+    |> List.scan (fun state (index, segment) -> folder wire.InitialOrientation state index segment) wire.StartPos.Y  
 
-let getInOutSegments (wire: Wire) (channel: BoundingBox) =
+
+let getInOutSegments (channel: BoundingBox) (wire: Wire)  =
         let segMap = WireToLineSegs wire
         let channelBox = boundingBoxToBoxLines channel
         let channelIntersects (line: LineSeg) = 
@@ -73,6 +88,8 @@ let getInOutSegments (wire: Wire) (channel: BoundingBox) =
             |> List.filter (fun (_,list) -> list <> [])
 
         let rec leftSeg (intersects: (LineSeg * Edge list) list) = 
+            print "current len of left list"
+            print (List.length intersects)
             match intersects with
                 | (line, edges)::tl -> 
                     if Option.isSome (List.tryFind (fun (el: Edge) -> el = Edge.Left) edges) then
@@ -82,7 +99,9 @@ let getInOutSegments (wire: Wire) (channel: BoundingBox) =
                 | [] -> None
 
         let rec rightSeg (intersects: (LineSeg * Edge list) list) = 
-            match intersectList with
+            print "current length of list right:"
+            print (List.length intersects)
+            match intersects with
                 | (line, edges)::tl -> 
                     if Option.isSome (List.tryFind (fun (el: Edge) -> el = Edge.Right) edges) then
                        Some  (Map.findKey (fun _ v -> v =line) segMap)
@@ -96,6 +115,13 @@ let getInOutSegments (wire: Wire) (channel: BoundingBox) =
 
         finalLeft, finalRight
 
+let getWiresInChannel (channel: BoundingBox) (model: Model)  = 
+    model.Wires
+    |> Map.toList
+    |> List.map (fun (connectionId, wire) -> connectionId, (getInOutSegments channel wire))
+    |> List.filter (fun (connectionId, (left, right)) -> (Option.isSome left) && (Option.isSome right))
+    |> List.map (fun (connectionId: ConnectionId, (left, right)) -> {Wire = connectionId; StartSegment = (Option.get left); EndSegment = (Option.get right)})
+
 let straightenWire (model: Model) (wire: Wire) (startSegment: int) (endSegment: int) : Wire =
     let startStart, startEnd = getSegPositions wire startSegment
     let endStart, endEnd = getSegPositions wire endSegment
@@ -104,26 +130,83 @@ let straightenWire (model: Model) (wire: Wire) (startSegment: int) (endSegment: 
         
         let segMove = endStart.Y - startStart.Y
         let horiDist = endStart.X - startEnd.X
+        let segFolder currWire seg =
+            let segStart, segEnd = getSegPositions wire seg
+            let segmove = endStart.Y - segStart.Y
+            if segStart.Y = segEnd.Y then
+                moveSegment model currWire.Segments[seg] segmove
+            else
+                currWire
+
         let newSegments = 
             [startSegment+1..endSegment-1]
-            |> List.map (fun x -> {segments[x] with Length = 0})
+            |> List.map (fun x -> 
+                let segStart, segEnd = getSegPositions wire x
+                if segStart.X = segEnd.X then 
+                    {segments[x] with Length = 0}
+                else
+                    segments[x]   
+                )
+
+        let newSegments2 wire = 
+            (wire, [startSegment+1..endSegment-1])
+            ||> List.fold segFolder
+
+
+
         let newStartSeg = {segments[startSegment] with Length = segments[startSegment].Length + horiDist}
-        let segList = segments[..startSegment-1] @ [newStartSeg] @ newSegments @ segments[endSegment..]
+        let segList = segments[..startSegment-1] @ [newStartSeg] @ (newSegments2 wire).Segments[startSegment+1..endSegment-1] @ segments[endSegment..]
         let wireToMove = {wire with Segments = segList}
         moveSegment model wireToMove.Segments[startSegment] segMove
     else
         wire
 
+let straightenWires (model:Model) (wiresToStraighten: List<WireMovementInfo>) = 
+    let wires = model.Wires
+    let newWires = 
+        wiresToStraighten
+        |> List.fold  (fun state wireInfo -> Map.add wireInfo.Wire (straightenWire model (Map.find wireInfo.Wire state) wireInfo.StartSegment wireInfo.EndSegment) state) wires
+    {model with Wires = newWires}
+
 
 let getWireOrder (model: Model) (wires: list<ConnectionId>) = 
     let getFinalHeight (wire: Wire) = 
-        
-     
+        let folder (initialOrientation: Orientation) (state: float) (index:int) (segment: Segment) = 
+            if (index % 2 = 0 && initialOrientation = Vertical) || (index % 2 = 1 && initialOrientation = Horizontal) then
+                state + segment.Length
+            else
+                state
+        wire.Segments
+        |> List.zip [0..(List.length wire.Segments)-1]
+        |> List.fold (fun state (index, segment) -> folder wire.InitialOrientation state index segment) wire.StartPos.Y
+
+    wires
+    |> List.sortBy (fun wire -> (Map.find wire model.Wires) |> getFinalHeight)
+
+let getWireSpacings (channel: BoundingBox) (ids: list<ConnectionId>) = 
+    //returns an array of what X coordinate each vertical segment should be
+    let numberOfWires = float (List.length ids)
+    [1.0..numberOfWires] 
+    |> List.map (fun x -> channel.TopLeft.Y + ((channel.H / (numberOfWires + 1.0 )) * x))
 
 
-// let straightenWire (model: Model) (wire: ConnectionId) (startSegment: int) (endSegment: int) : Wire = 
-//     //TO BE IMPLEMENTED BY SHERIF
-//     failwithf("not implemented yet")
+
+let moveWire (model: Model) (wireId: ConnectionId) (startSegment: int) (endSegment: int) (yCoordinate: float): Wire = 
+    let wire = Map.find wireId model.Wires
+    let segmentYCoordinates = YCoordinateEachSegment wire
+    let currentY = segmentYCoordinates[startSegment]
+    let movement = yCoordinate - currentY
+    let remainder = startSegment % 2
+    wire.Segments
+    |> List.zip [0..(List.length wire.Segments) - 1]
+    |> List.fold (fun wire (index, segment) -> if ((index % 2 = remainder) && (index >= startSegment) && (index <= endSegment)) then (moveSegment model segment movement) else wire) wire
+
+let moveWires (model: Model) (wiresToMove: List<WireMovementInfo>) (wireSpacings: List<float>)=
+    let newWires = 
+        wiresToMove
+        |> List.zip wireSpacings 
+        |> List.fold (fun state (wireSpacing, wire) -> Map.add wire.Wire (moveWire model wire.Wire wire.StartSegment wire.EndSegment wireSpacing) state) model.Wires
+    {model with Wires = newWires}
 
 
 let smartChannelRoute //spaces wires evenly 
@@ -144,20 +227,20 @@ let smartChannelRoute //spaces wires evenly
     ///     - getWireOrder -> gets the order the wires should be in based on the wire constraints (AJ)
     ///     - getWireSpacings -> determines the y value each straightened channel section should be at (AJ)
     ///     - moveWires -> moves the straightened sections to these y values. (AJ)
-
-
-    //for a horizontal channel, adjusts wires so that only one horizontal segment in a wire runs through the channel. 
-    let straightenedModel = straightenHorizontalWires channel channelOrientation model sortedWireIdsInChannel
-    
-    //allocates a spacing for each wire. An x coordinate for vertical channels and a y coordinate for horizontal channels./
-    let wireSpacings = wireSpacer channelOrientation channel sortedWireIdsInChannel
-
+    print "hi"
     if channelOrientation = Vertical then
-        //creating a new order improves the wire ordering in the vertical channel. It deals with edge cases that the previous ordering algorithm
-        //doesn't always deal with effectively
-        let newOrder = improveWireOrder channel wireSpacings straightenedModel.Wires sortedWireIdsInChannel
-        //moves wires to their associated spacing, or as close as possible to it if not possible
-        {straightenedModel with Wires = moveWires channelOrientation straightenedModel.Wires wireSpacings newOrder}
-    else    
-        //moves wires to their associated spacing, or as close as pottible to it if not possible
-        {straightenedModel with Wires = moveWires channelOrientation straightenedModel.Wires wireSpacings sortedWireIdsInChannel}
+        model
+    else
+        print "here doing horizontal"
+        let wiresInChannel = getWiresInChannel channel model
+        print "got out of function"
+        print (List.length wiresInChannel)
+        
+
+
+        //model
+        straightenWires model wiresInChannel
+
+
+
+   
