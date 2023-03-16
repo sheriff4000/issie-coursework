@@ -154,6 +154,153 @@ let reOrderPorts
         let wires = SmartHelpers.getConnectedWires symbol1 symbol2 wireModel
         List.map (SmartHelpers.getPortFromWire model symbol2) wires
 
+    let getSymbolPos (symbol1: Symbol) (symbol2: Symbol) = //gets symbol positioning with respect to the other
+        let xDifference = symbol1.Pos.X - symbol2.Pos.X
+        let yDifference = symbol1.Pos.Y - symbol2.Pos.Y
+        if (abs xDifference) < (abs yDifference)
+        then
+            printfn "Vertical"
+            if yDifference > 0
+            then 
+                //symbol1 is above symbol 2
+                "Top"
+            else
+                //symbol1 is below symbol 2
+                "Bottom"
+        else 
+            printfn "Horizontal"
+            if xDifference > 0 
+            then
+                //symbol1 is to the left of symbol1
+                "Left"
+            else
+                //symbol1 is to the right of symbol2
+                "Right"
+    printfn $"{(getSymbolPos symbolToOrder otherSymbol)}"
+    //get wires that are not connected to both symbols by getting wires only connected to that one symbol
+    //maybe use list.filter
+
+    let reorderUnconnectedWires (otherSymbol:Symbol) (symbolToChange:Symbol) (model:SymbolT.Model) (wireModel:Model) = 
+        let getSingleConnectedWires = //wires only connected to symbolToChange
+            let connectedWires = SmartHelpers.getConnectedWires otherSymbol symbolToChange wireModel
+            let symbolToChangeWires = BusWireUpdateHelpers.getConnectedWires wireModel [symbolToChange.Id]
+            SmartHelpers.listDifference symbolToChangeWires connectedWires
+        //get the list of all the ports from port map and then swap each port with index 1
+        //Also only necessary if connected wires are on the same edge
+        //go through each edge - if there is a connected wire on this edge + a single connected wire
+        //swap the order: either index 1 or last index depending on symbol positioning
+        let testFunction = 
+            match (getSymbolPos symbolToChange otherSymbol) with //need to make the output of this either edge or new type with four options
+            | "Top" -> 0
+            | "Bottom" -> 0
+            | "Left" -> 0 
+            | "Right"-> 0
+        //need to get second symbol connected to wire
+        //input = wire and symbol
+        //output = second symbol
+        let getSecondSymbol = 0
+        //input should be edge and symbolToChange
+        //output should be symbol
+        //List.fold
+
+        //
+
+        let ports symbol edge = 
+            let portsList = List.map (SmartHelpers.getPortFromWire model symbolToChange) getSingleConnectedWires |> List.map (fun (x:Port) -> x.Id)
+            let portListEdge = symbolToChange.PortMaps.Order[edge] 
+            //need to create another function that gets a symbol from a wire and another symbol
+            
+            let additionalSymbol = SmartHelpers.getSymbolFromWire model symbolToChange
+            if (SmartHelpers.combineLists portsList portListEdge).Length <> 0//if there is a port that is connected to a different symbol
+            then 
+                //need to get list of ports on this edge
+                let portListSingleConnected = SmartHelpers.combineLists portsList portListEdge
+                                              |> List.map (fun (x:string) -> model.Ports[x])
+                let test2  symbol (port:Port)= 
+                    /// Returns the IDs of the wires in the model connected to a list of components given by compIds
+                    let wire =
+                        let containsPorts (wire:Wire) =
+                            if (Symbol.getInputPortIdStr wire.InputPort) <> port.Id
+                            then 
+                                if (Symbol.getOutputPortIdStr wire.OutputPort) <> port.Id
+                                then false
+                                else true
+                            else
+                                true                              
+
+                        let test = wireModel.Wires
+                                    |> Map.toList
+                                    |> List.map (fun (x,y) -> y)
+                                    |> List.filter containsPorts
+                        test[0]
+                    //let wire = wireModel.Wires[port.]
+                    match (getSymbolPos symbolToChange otherSymbol) with
+                        | "Top" -> match edge with 
+                                   | Top -> 
+                                            printfn("CHECK1")
+                                            if (additionalSymbol wire).Pos.X > symbolToChange.Pos.X
+                                            then swapPorts symbol port (Symbol.getPort model portListEdge[0])
+                                            else swapPorts symbol port (Symbol.getPort model (List.last portListEdge))
+                                   | Bottom -> 
+                                            printfn("CHECK2")
+                                            if (additionalSymbol wire).Pos.X > symbolToChange.Pos.X
+                                            then swapPorts symbolToChange port (Symbol.getPort model portListEdge[0])
+                                            else swapPorts symbolToChange port (Symbol.getPort model (List.last portListEdge))
+                                   | _ -> symbol
+                        | "Bottom" -> match edge with 
+                                   | Top -> 
+                                            printfn("CHECK3")
+                                            if (additionalSymbol wire).Pos.X > symbolToChange.Pos.X
+                                            then swapPorts symbolToChange port (Symbol.getPort model portListEdge[0])
+                                            else swapPorts symbolToChange port (Symbol.getPort model (List.last portListEdge))
+                                   | Bottom -> 
+                                            printfn("CHECK4")
+                                            if (additionalSymbol wire).Pos.X > symbolToChange.Pos.X
+                                            then swapPorts symbol port (Symbol.getPort model portListEdge[0])
+                                            else swapPorts symbol port (Symbol.getPort model (List.last portListEdge))
+                                   | _ -> symbol
+                        | "Left" -> match edge with 
+                                   | Left -> 
+                                            printfn("CHECK5")
+                                            printfn($"{(additionalSymbol wire).Pos.Y} and {symbolToChange.Pos.Y}")
+                                            if (additionalSymbol wire).Pos.Y < symbolToChange.Pos.Y
+                                            then printfn("HELLO")
+                                                 
+                                                 swapPorts symbol port (Symbol.getPort model portListEdge[0])
+                                            else swapPorts symbol port (Symbol.getPort model (List.last portListEdge))
+                                   | Right -> 
+                                            printfn("CHECK6")
+                                            if (additionalSymbol wire).Pos.Y < symbolToChange.Pos.Y
+                                            then swapPorts symbol port (Symbol.getPort model portListEdge[0])
+                                            else swapPorts symbol port (Symbol.getPort model (List.last portListEdge))
+                                   | _ -> symbol
+                        | "Right"-> match edge with 
+                                   | Left -> 
+                                   //might be able to just get rid of left etc since not affecting anything
+                                            printfn("CHECK7")
+                                            if (additionalSymbol wire).Pos.Y < symbolToChange.Pos.Y
+                                            then swapPorts symbol port (Symbol.getPort model portListEdge[0])
+                                            else swapPorts symbol port (Symbol.getPort model (List.last portListEdge))
+                                   | Right -> 
+                                            printfn("CHECK8")
+                                            printfn($"{portListEdge.Length}")
+                                            if (additionalSymbol wire).Pos.Y > symbolToChange.Pos.Y
+                                            then swapPorts symbol port (Symbol.getPort model portListEdge[0])
+                                            else swapPorts symbol port (Symbol.getPort model (List.last portListEdge))//(List.last portListEdge))
+                                   | _ -> symbol
+                List.fold test2 symbol portListSingleConnected 
+            else symbol
+            
+            //checks if any ports are in single connected wires
+            //if any in portslist are in that edge then
+            //match edge with Top/Bottom/Left/right
+            //if symbol position is top and edge is top then move to left/right based on position
+            //if symbol position is top and edge is bottom then move to left/right based on position
+            //if symbol position is top and edge is left/right then move to highest (first index)
+            //if symbol position is left and edge left/right then move to top/bottom based on position
+            //if symbol position is left and edge is top/bottom then move to left
+        let allEdges = [Top;Bottom;Left;Right]    
+        List.fold ports symbolToChange allEdges
     //added functionality for future: will change positioning based on symbol positioning e.g. is one symbol above the other
     let comparePortEdge   (otherSymbol:Symbol) (model: SymbolT.Model) (symbolToChange:Symbol) (wire:Wire) =
         let getPorts = List.map (fun (x: Port) -> string x.Id) (connectedPorts symbolToChange otherSymbol model wModel)
@@ -229,11 +376,21 @@ let reOrderPorts
                                           let newWires = newWireModel |> SmartHelpers.getConnectedWires newSymbol otherSymbol
                                           changeSymbol newSymbol newWires newWireModel (n+1)
             | false -> symbol'
-    let reOrderPortEdges = 
+    let testOtherPorts = reorderUnconnectedWires otherSymbol symbolToOrder sModel wModel
+    let testWireModel = updateWires testOtherPorts wModel symbolToOrder
+    (*let reOrderPortEdges = 
         match anyInterconnected wires with
         | true -> List.fold (comparePortEdge otherSymbol sModel) symbolToOrder wires
-        | false -> symbolToOrder
-    
+        | false -> symbolToOrder*)
+    let changedTestModel = {wModel with 
+                                Wires = testWireModel.Wires
+                                Symbol = {sModel with Symbols = Map.add testOtherPorts.Id testOtherPorts sModel.Symbols}
+                            }
+    let wires': Wire List = SmartHelpers.getConnectedWires testOtherPorts otherSymbol testWireModel  
+    let reOrderPortEdges = 
+        match anyInterconnected wires with
+        | true -> List.fold (comparePortEdge otherSymbol changedTestModel.Symbol) testOtherPorts wires
+        | false -> testOtherPorts
     let newWireModel = updateWires reOrderPortEdges wModel symbolToOrder
 
     let changedModel = {wModel with 
