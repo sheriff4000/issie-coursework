@@ -281,9 +281,10 @@ let getSymbolFromWire (model: SymbolT.Model) (symbol:Symbol) (wire:Wire) =
     //getPortFromWire returns a port - i need the portid for the second symbol
     if (getPortFromWire model symbol wire).Id <> Symbol.getInputPortIdStr (wire.InputPort)
     then
-        Symbol.getSymbol model (Symbol.getOutputPortIdStr (wire.OutputPort))
-    else
         Symbol.getSymbol model (Symbol.getInputPortIdStr (wire.InputPort))
+    else
+        Symbol.getSymbol model (Symbol.getOutputPortIdStr (wire.OutputPort))
+        
 
 
 //HLP23: AUTHOR Ewan

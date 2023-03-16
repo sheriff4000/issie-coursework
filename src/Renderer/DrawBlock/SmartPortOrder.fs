@@ -237,43 +237,56 @@ let reOrderPorts
                     match (getSymbolPos symbolToChange otherSymbol) with
                         | "Top" -> match edge with 
                                    | Top -> 
+                                            printfn("CHECK1")
                                             if (additionalSymbol wire).Pos.X > symbolToChange.Pos.X
                                             then swapPorts symbol port (Symbol.getPort model portListEdge[0])
                                             else swapPorts symbol port (Symbol.getPort model (List.last portListEdge))
                                    | Bottom -> 
+                                            printfn("CHECK2")
                                             if (additionalSymbol wire).Pos.X > symbolToChange.Pos.X
                                             then swapPorts symbolToChange port (Symbol.getPort model portListEdge[0])
                                             else swapPorts symbolToChange port (Symbol.getPort model (List.last portListEdge))
                                    | _ -> symbol
                         | "Bottom" -> match edge with 
                                    | Top -> 
+                                            printfn("CHECK3")
                                             if (additionalSymbol wire).Pos.X > symbolToChange.Pos.X
                                             then swapPorts symbolToChange port (Symbol.getPort model portListEdge[0])
                                             else swapPorts symbolToChange port (Symbol.getPort model (List.last portListEdge))
                                    | Bottom -> 
+                                            printfn("CHECK4")
                                             if (additionalSymbol wire).Pos.X > symbolToChange.Pos.X
                                             then swapPorts symbol port (Symbol.getPort model portListEdge[0])
                                             else swapPorts symbol port (Symbol.getPort model (List.last portListEdge))
                                    | _ -> symbol
                         | "Left" -> match edge with 
                                    | Left -> 
+                                            printfn("CHECK5")
+                                            printfn($"{(additionalSymbol wire).Pos.Y} and {symbolToChange.Pos.Y}")
                                             if (additionalSymbol wire).Pos.Y < symbolToChange.Pos.Y
-                                            then swapPorts symbol port (Symbol.getPort model portListEdge[0])
+                                            then printfn("HELLO")
+                                                 
+                                                 swapPorts symbol port (Symbol.getPort model portListEdge[0])
                                             else swapPorts symbol port (Symbol.getPort model (List.last portListEdge))
                                    | Right -> 
+                                            printfn("CHECK6")
                                             if (additionalSymbol wire).Pos.Y < symbolToChange.Pos.Y
                                             then swapPorts symbol port (Symbol.getPort model portListEdge[0])
                                             else swapPorts symbol port (Symbol.getPort model (List.last portListEdge))
                                    | _ -> symbol
                         | "Right"-> match edge with 
                                    | Left -> 
+                                   //might be able to just get rid of left etc since not affecting anything
+                                            printfn("CHECK7")
                                             if (additionalSymbol wire).Pos.Y < symbolToChange.Pos.Y
                                             then swapPorts symbol port (Symbol.getPort model portListEdge[0])
                                             else swapPorts symbol port (Symbol.getPort model (List.last portListEdge))
                                    | Right -> 
-                                            if (additionalSymbol wire).Pos.Y < symbolToChange.Pos.Y
+                                            printfn("CHECK8")
+                                            printfn($"{portListEdge.Length}")
+                                            if (additionalSymbol wire).Pos.Y > symbolToChange.Pos.Y
                                             then swapPorts symbol port (Symbol.getPort model portListEdge[0])
-                                            else swapPorts symbol port (Symbol.getPort model (List.last portListEdge))
+                                            else swapPorts symbol port (Symbol.getPort model (List.last portListEdge))//(List.last portListEdge))
                                    | _ -> symbol
                 List.fold test2 symbol portListSingleConnected 
             else symbol
