@@ -91,6 +91,8 @@ let moveWireVerticalSegment (xCoordinate: float) (wire: Wire) =
         | _ -> wire
 
 
+
+
 let moveWireHorizontalSegment (yCoordinate: float) (wire: Wire) = 
     let moveHorizontalSegment (segments: List<Segment>) (amount: float)= 
         segments
