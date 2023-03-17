@@ -238,6 +238,25 @@ let addFakeSegs (addType: AddSegType) (wire: Wire) (idx: int) (intersect: Inters
     
     {wire with Segments = mappedSegs}, newIdx
 
+let moveSegment2 (amount: float) (wire: Wire) (segmentIndex: int) =
+    let moveHorizontalSegment (segments: List<Segment>) (amount: float) = 
+        let rightHorizontal: float = segments[segmentIndex+1].Length
+        let leftHorizontal: float = segments[segmentIndex-1].Length
+        let amountSign = amount > 0
+        let leftSign = leftHorizontal > 0
+        let rightSign = rightHorizontal > 0
+        segments
+        |> List.mapi (fun i x -> 
+            if (i = segmentIndex - 1 && (leftHorizontal <> 0 || i = 1 || i = (List.length segments) - 2)) then 
+                {x with Length=x.Length+amount} 
+            
+            elif (i = segmentIndex + 1 && (rightHorizontal <> 0 || i = 1 || i = (List.length segments) - 2))then
+                {x with Length=x.Length-amount} 
+            else x 
+            )
+    //let amount = yCoordinate - currentHeight
+    {wire with Segments = moveHorizontalSegment wire.Segments amount}
+
 let smartAutoroute (model: Model) (wire: Wire): Wire = 
     let segments = wire.Segments
     let destPos, startPos =
@@ -270,6 +289,7 @@ let smartAutoroute (model: Model) (wire: Wire): Wire =
         else
             match intersects with
                 | intersect::_ ->
+                    printfn "%A" intersect.intersectType
                     let segIndex = 
                         Map.tryFindKey (fun _ l -> l = intersect.line) segMap
                         |> Option.defaultValue 0 //Shouldn't happen
