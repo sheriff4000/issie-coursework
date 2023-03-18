@@ -424,5 +424,73 @@ let isInterconnected (fstWire,sndWire)=
             //not interconnected
             false
 
-                    
+ /// HLP23: Sherif
+/// Defines a line segment as two positions
+// type LineSeg = 
+//     {
+//         Start: XYPos
+//         finish: XYPos
+//     }
+//     // since only either horizontal or vertical, can add differences
+//     member this.length = (this.finish.X-this.Start.X) + (this.finish.Y-this.Start.Y)  
+//     member this.orientation = if this.Start.X = this.finish.X then Vertical else Horizontal
 
+/// HLP23: Sherif
+/// defines a bounding box as its set of edges
+// type boxLines =
+//     {
+//         top: LineSeg
+//         bottom: LineSeg
+//         left: LineSeg
+//         right: LineSeg
+//         W: float
+//         H: float
+//     }
+/// HLP23: Sherif
+/// encapsulates all information on an intersection between a wire segment and a component
+type Intersect = {
+    Box: BoundingBox
+    Line: LineSeg 
+    IntersectType: Edge
+    Position: XYPos
+    Index: int
+    }
+
+/// HLP23: Sherif
+/// converts a wire to a map of index and line segments, allowing a simple translation between segment index and its corresponding lineSegment
+let WireToLineSegs (wire: Wire) = 
+    segmentsToIssieVertices wire.Segments wire
+    |> List.map (fun (x,y,_) -> {X = x; Y = y})
+    |> List.pairwise
+    |> List.map (fun (startpoint,endpoint) -> {Start = startpoint; Finish = endpoint})
+    |> List.mapi (fun idx line -> (idx, line))
+    //|> List.filter (fun (idx,_) -> idx = 0 )
+    |> Map.ofList
+
+/// HLP23: Sherif    
+///finds the intersection between two LineSegs if it exists -> could be made more accessible to others in group phase
+/// by taking StartPoint and endPoint for both wires, no need right now though
+let LineSegIntersect (l1: LineSeg) (l2: LineSeg) : XYPos Option = 
+    let dx1 = l1.Finish.X - l1.Start.X 
+    let dy1 = l1.Finish.Y - l1.Start.Y
+    let dx2 = l2.Finish.X - l2.Start.X 
+    let dy2 = l2.Finish.Y - l2.Start.Y
+
+    if (dx1 = 0 && dx2 = 0) || (dy1 = 0 && dy2 = 0) then //if both horizontal or both vertical
+        None
+    else
+        let h, v = if l1.Start.Y = l1.Finish.Y then (l1, l2) else (l2, l1)
+        let minX = min h.Start.X h.Finish.X
+        let maxX = max h.Start.X h.Finish.X
+        let minY = min v.Start.Y v.Finish.Y
+        let maxY = max v.Start.Y v.Finish.Y
+        if v.Start.X >= minX && v.Start.X <= maxX && h.Start.Y >= minY && h.Start.Y <= maxY then
+            Some { X = v.Start.X; Y = h.Start.Y}
+        else
+            None              
+/// HLP23: Sherif
+/// returns the positions (XYPos) of the Start and end of the segment at the given index
+let getSegPositions wire idx = 
+    let segMap = WireToLineSegs wire
+    let segPositions = segMap[idx]
+    segPositions.Start, segPositions.Finish

@@ -20,10 +20,14 @@ open Fable.Core.JsInterop
 open BuildUartHelpers
 open Node.ChildProcess
 open Node
+open SmartChannel
+open SmartHelpers
 
 module node = Node.Api
 
 importReadUart
+let print x =
+    printfn "%A" x
 
 
 let helpers:SmartPortOrder.BusWireHelpers = {
@@ -767,14 +771,126 @@ let update (msg : Msg) (model : Model): Model*Cmd<Msg> =
             | None -> 
                 printfn "Error: can't validate the two symbols selected to reorder ports"
                 model, Cmd.none
+
     | TestSmartChannel ->
-        // Test code called from Edit menu item
-        // Validate the list of selected symbols: it muts have just two for
-        // The test to work.
-         validateTwoSelectedSymbols model
-         |> function
-            | Some (s1,s2) ->
-                let bBoxes = model.BoundingBoxes
+        let bBoxes = model.BoundingBoxes
+
+
+        let checkAutoRouteBoundingBox (channel: BoundingBox) (side: Edge) : bool =
+            //returns bool saying if theres multiple wires being autorouted
+            let orientation =
+                if side = Top || side = Bottom then
+                    Horizontal
+                else 
+                    Vertical
+            //filter out all the mulitple segment wires in channel -> keeping the autorouted segments
+            let wireModel = model.Wire
+            let wiresInChannel = 
+                getWiresInChannel orientation channel wireModel
+
+            let segmentsInChannel =
+                wiresInChannel
+                |> List.map (fun x -> wireModel.Wires[x.Wire], x.StartSegment, x.EndSegment)
+                |> List.map (fun (wire, idx1, idx2) -> (SmartHelpers.getSegPositions wire idx1), (SmartHelpers.getSegPositions wire idx2))
+                |> List.filter (fun ((s1,_),(s2,_)) ->
+                    if  orientation = Horizontal then
+                        s1.Y = s2.Y
+                    else 
+                        s1.X = s2.X
+                    )
+                |> List.map (fun((s1,_), (_,_)) -> s1)
+
+            if orientation = Horizontal then
+                let yPos = 
+                    segmentsInChannel
+                    |> List.map (fun start -> start.Y)
+                    |> List.countBy id
+                    |> List.filter (fun (_, count) -> count > 1)
+                if  (List.isEmpty yPos) then
+                    false
+                else 
+                    true
+            else    
+                let xPos = 
+                    segmentsInChannel
+                    |> List.map (fun start -> start.X)
+                    |> List.countBy id
+                    |> List.filter (fun (_, count) -> count > 1)
+                if  (List.isEmpty xPos) then
+                    false
+                else 
+                    true
+
+            
+        let componentToChannels (symbol: Symbol) =
+            let componentboundingBox :  BoundingBox = 
+                let comp = symbol.Component
+                let topLeft = {X = comp.X; Y = comp.Y}
+                {TopLeft = topLeft; H = comp.H; W = comp.W}
+            
+            let top  =
+                let topleft = {componentboundingBox.TopLeft with Y = componentboundingBox.TopLeft.Y-50.0}
+                {TopLeft = topleft; W = componentboundingBox.W; H = 50.0}
+            let bottom  =
+                let topleft = {componentboundingBox.TopLeft with Y = componentboundingBox.TopLeft.Y + componentboundingBox.H}
+                {TopLeft = topleft; W = componentboundingBox.W; H = 50.0}
+            let left =
+                let topleft = {componentboundingBox.TopLeft with X = componentboundingBox.TopLeft.X-50.0}
+                {TopLeft = topleft; H = componentboundingBox.H; W = 50.0}
+            let right  =
+                let topleft = {componentboundingBox.TopLeft with X = componentboundingBox.TopLeft.X + componentboundingBox.W}
+                {TopLeft = topleft; H = componentboundingBox.H; W = 50.0}
+            (top,bottom,left,right)   
+
+        let allAutoRouteChannels = 
+            let symbols = model.Wire.Symbol.Symbols
+            let symbolList = 
+                Map.values symbols 
+                |> List.ofSeq
+            
+            
+            symbolList
+            |> List.map (componentToChannels)
+            |> List.map (fun (top, bottom, left, right) -> ((top, Edge.Top), (bottom, Edge.Bottom), (left, Edge.Left), (right, Edge.Right)))
+            |> List.collect (fun (a,b,c,d) -> [a;b;c;d])
+            |> List.filter (fun (box, side) -> checkAutoRouteBoundingBox box side)
+            |> List.map (fun (box,side)-> box, (if (side = Top) || (side = Bottom) then Horizontal else Vertical))
+
+            
+        
+
+        let allComponentChannels : (Symbol * Symbol) list = 
+            let symbols = model.Wire.Symbol.Symbols
+            let symbolList = 
+                Map.values symbols 
+                |> List.ofSeq
+
+            let listPairs = 
+                List.allPairs symbolList symbolList
+                |> List.filter (fun (s1,s2) -> s1 <> s2)
+
+            listPairs
+            |> List.filter (fun (s1, s2) -> List.contains (s2,s1) listPairs)
+            |> List.filter (fun (s1, s2) -> (Option.isSome (getVerticalChannel bBoxes[s1.Id] bBoxes[s2.Id]) || Option.isSome (getHorizontalChannel bBoxes[s1.Id] bBoxes[s2.Id])))
+            |> List.map (fun (s1, s2) -> ((s1,s2), getVerticalChannel bBoxes[s1.Id] bBoxes[s2.Id], getHorizontalChannel bBoxes[s1.Id] bBoxes[s2.Id] ))
+            |> List.map (fun ((s1,s2), vert, hori) ->
+                let channelSize =  
+                    if Option.isSome vert then
+                        let box = Option.get vert
+                        box.W, box.W/box.H
+                    else
+                        let box = Option.get hori
+                        box.H, box.H/box.W
+                ((s1,s2),channelSize)
+                )
+            |> List.sortByDescending (fun ((s1,s2),(size, ratio)) -> ratio)
+            |> List.filter (fun ((s1,s2),(size, ratio)) -> ((size > 10) && (size < 400)))
+            
+            |> List.map (fun ((s1,s2),size) -> (s1,s2))
+                    
+        let channelFolder (currModel : Model) (currChannel: Symbol * Symbol) =
+            match currChannel with
+            | (s1,s2) -> 
                 getVerticalChannel bBoxes[s1.Id] bBoxes[s2.Id]
                 |> function 
                    | None -> 
@@ -782,14 +898,85 @@ let update (msg : Msg) (model : Model): Model*Cmd<Msg> =
                         |> function
                             | None ->
                                 printfn "no horizontal or vertical channel"
-                                model, Cmd.none 
+                                currModel 
                             | Some channel ->
-                                {model with Wire = SmartChannel.smartChannelRoute Horizontal channel model.Wire}, Cmd.none 
-                   | Some channel ->
-                        {model with Wire = SmartChannel.smartChannelRoute Vertical channel model.Wire}, Cmd.none
-            | None -> 
-                printfn "Error: can't validate the two symbols selected to reorder ports"
-                model, Cmd.none   
+                                print channel.H
+                                {currModel with Wire = (SmartChannel.smartChannelRoute Horizontal channel  currModel.Wire)} 
+                    | Some channel ->
+                        print channel.W
+                        {currModel with Wire = (SmartChannel.smartChannelRoute Vertical channel currModel.Wire)}
+    
+        printfn $"{List.length allAutoRouteChannels}"
+        let newModel = 
+            (model, allAutoRouteChannels)
+            ||> List.fold (fun currModel (box, orientation) -> {currModel with Wire = (SmartChannel.smartChannelRoute orientation box currModel.Wire)})
+        
+        
+        let newModel2 = 
+            let inList = 
+                let twoSelected = validateTwoSelectedSymbols model
+                if Option.isSome twoSelected then
+                    let symTuple = Option.get twoSelected
+                    [symTuple]
+                else
+                    allComponentChannels
+
+            
+            (newModel, inList)
+            ||> List.fold (fun state symbols -> channelFolder state symbols) 
+
+
+        newModel2, Cmd.none
+
+
+    // | TestSmartChannel ->
+    //     // Test code called from Edit menu item
+    //     // Validate the list of selected symbols: it muts have just two for
+    //     // The test to work.
+    //     let allSymbols (model:Model) = 
+    //         let symbols = model.Wire.Symbol.Symbols
+    //         let symbolPairs = 
+    //             Map.values symbols 
+    //             |> List.ofSeq
+    //             |> List.allPairs
+    //         symbolPairs
+
+    //     let channelFolder (currModel: Model) (currChannel: Symbol * Symbol) =
+    //         match currChannel with
+    //         | (s1,s2) -> 
+    //             let bBoxes = model.BoundingBoxes
+    //             getVerticalChannel bBoxes[s1.Id] bBoxes[s2.Id]
+    //             |> function 
+    //                | None -> 
+    //                     getHorizontalChannel bBoxes[s1.Id] bBoxes[s2.Id]
+    //                     |> function
+    //                         | None ->
+    //                             printfn "no horizontal or vertical channel"
+    //                             model, Cmd.none 
+    //                         | Some channel ->
+    //                             {model with Wire = SmartChannel.smartChannelRoute Horizontal channel model.Wire}, Cmd.none 
+    //                | Some channel ->
+    //                     {model with Wire = SmartChannel.smartChannelRoute Vertical channel model.Wire}, Cmd.none
+
+    //     validateTwoSelectedSymbols model  
+    //     |> function
+    //         | Some (s1,s2) ->
+    //             let bBoxes = model.BoundingBoxes
+    //             getVerticalChannel bBoxes[s1.Id] bBoxes[s2.Id]
+    //             |> function 
+    //                | None -> 
+    //                     getHorizontalChannel bBoxes[s1.Id] bBoxes[s2.Id]
+    //                     |> function
+    //                         | None ->
+    //                             printfn "no horizontal or vertical channel"
+    //                             model, Cmd.none 
+    //                         | Some channel ->
+    //                             {model with Wire = SmartChannel.smartChannelRoute Horizontal channel model.Wire}, Cmd.none 
+    //                | Some channel ->
+    //                     {model with Wire = SmartChannel.smartChannelRoute Vertical channel model.Wire}, Cmd.none
+    //         | None -> 
+    //             printfn "Error: can't validate the two symbols selected to reorder ports"
+    //             model, Cmd.none   
     
 
     | ToggleNet _ | DoNothing | _ -> model, Cmd.none

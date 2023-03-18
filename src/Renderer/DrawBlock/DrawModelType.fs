@@ -297,7 +297,7 @@ module BusWireT =
             /// return true if segment length is 0 to within FP tolerance
             member inline this.IsZero() = abs this.Segment.Length < XYPos.epsilon
 
-    
+
     type Wire =
         {
             WId: ConnectionId 

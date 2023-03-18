@@ -5,6 +5,7 @@
 module CommonTypes
     open Fable.Core               
     open Optics
+
     /// Position on SVG canvas
     /// Positions can be added, subtracted, scaled using overloaded +,-, *  operators
     /// currently these custom operators are not used in Issie - they should be!
@@ -42,7 +43,14 @@ module CommonTypes
     /// one of the two operator arguments having a known XYPos type.
     let private testXYPosComparison a  (b:XYPos) = 
         a =~ b   
-  
+    
+    type LineSeg = 
+        {
+            Start: XYPos 
+            Finish: XYPos
+        }
+    // since only either horizontal or vertical, can add differences
+        member this.Length = (this.Finish.X-this.Start.X) + (this.Finish.Y-this.Start.Y)  
 
     //==========================================//
     // Canvas state mapped to f# data structure //
@@ -260,15 +268,20 @@ module CommonTypes
     /// Represents the sides of a component
     type Edge = | Top | Bottom | Left | Right
 
-    type BoundingBox = {
+    type BoundingBox =
+        {
         /// Top left corner of the bounding box
-        TopLeft: XYPos
+            TopLeft: XYPos
         /// Width
-        W: float
+            W: float
         /// Height
-        H: float
-    }
-        with member this.Centre() = this.TopLeft + {X=this.W/2.; Y=this.H/2.}
+            H: float
+        }
+        member this.Centre() = this.TopLeft + {X=this.W/2.; Y=this.H/2.}
+        member this.Top = {Start = this.TopLeft; Finish = {X= this.TopLeft.X + this.W; Y = this.TopLeft.Y}}
+        member this.Bottom = {Start = {X = this.TopLeft.X; Y = this.TopLeft.Y + this.H}; Finish = {X= this.TopLeft.X + this.W; Y = this.TopLeft.Y + this.H}}
+        member this.Left = {Start = {X = this.TopLeft.X; Y = this.TopLeft.Y}; Finish = {X= this.TopLeft.X; Y = this.TopLeft.Y + this.H}}
+        member this.Right = {Start = {X = this.TopLeft.X + this.W; Y = this.TopLeft.Y}; Finish = {X= this.TopLeft.X + this.W; Y = this.TopLeft.Y + this.H}}
     
     
     type ScaleAdjustment =
