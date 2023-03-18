@@ -339,30 +339,6 @@ type Intersect = {
     Index: int
     }
 
-// -----------------------------------------------------------------------
-/// HLP23: Sherif
-/// converts a BoundingBox to BoxLines
-// let boundingBoxToBoxLines (box: BoundingBox) = 
-//     let topRight = {Y = box.TopLeft.Y; X = box.TopLeft.X + box.W}
-//     let botLeft = {X = box.TopLeft.X; Y = box.TopLeft.Y+box.H}
-//     let botRight = {X = box.TopLeft.X + box.W; Y = box.TopLeft.Y+box.H}
-//     let topLeft = box.TopLeft
-
-//     {top = {Start = topLeft; finish = topRight}; 
-//         bottom = {Start = botLeft; finish = botRight}; 
-//         left = {Start = topLeft; finish = botLeft}; 
-//         right = {Start = topRight; finish = botRight};
-//         H = botLeft.Y - topLeft.Y;
-//         W = topRight.X - topLeft.X
-//     }
-// ///vHLP23: Sherif
-// /// converts a box of type boxLines to a BoundingBox
-// let boxLinesToBoundingBox (box: boxLines) = 
-//     {TopLeft = box.top.Start;
-//     H = box.left.finish.Y-box.left.Start.Y;
-//     W = box.top.finish.X - box.top.Start.X}
-// -------------------------------------------------------------------------
-
 /// HLP23: Sherif
 /// converts a wire to a map of index and line segments, allowing a simple translation between segment index and its corresponding lineSegment
 let WireToLineSegs (wire: Wire) = 
