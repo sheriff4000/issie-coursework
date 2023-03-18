@@ -257,7 +257,7 @@ let moveSegment2 (amount: float) (wire: Wire) (segmentIndex: int) =
     //let amount = yCoordinate - currentHeight
     {wire with Segments = moveHorizontalSegment wire.Segments amount}
 
-let smartAutoroute (model: Model) (wire: Wire): Wire = 
+let smartAutoroute (model: Model) (wire: Wire) = 
     let segments = wire.Segments
     let destPos, startPos =
         Symbol.getTwoPortLocations (model.Symbol) (wire.InputPort) (wire.OutputPort)
@@ -279,65 +279,99 @@ let smartAutoroute (model: Model) (wire: Wire): Wire =
     let initIntersects = getIntersects model wire
 
     /// recursive function to iterate through and handle intersects one at a time
-    let rec wireRecursive currWire (intersects: Intersect list) = 
-        let currIntersects = getIntersects model currWire
+    let rec wireRecursive currWire (intersects: Intersect list) (channelBoundingBoxes: BoundingBox list) = 
         /// contradiction is true when the previous change resulted in a separate intersection 
         /// between a wire and a symbol
-        let contradiction = ((List.length currIntersects) >= (List.length intersects)) && intersects <> currIntersects
-        if List.isEmpty currIntersects then
-            currWire
-        else
-            match intersects with
-                | intersect::_ ->
-                    printfn "%A" intersect.intersectType
-                    let segIndex = 
-                        Map.tryFindKey (fun _ l -> l = intersect.line) segMap
-                        |> Option.defaultValue 0 //Shouldn't happen
-                    let dist = LineMove (boxLinesToBoundingBox intersect.box) intersect.line
 
-                    let addType = 
-                        if not contradiction then
-                            if (segments[segIndex-1].Mode = Manual && segments[segIndex+1].Mode = Manual) || segments[segIndex].Mode = Manual then
-                                Both
-                            elif segments[segIndex-1].Mode = Manual then
-                                Previous
-                            elif segments[segIndex+1].Mode = Manual then
-                                Next
-                            else Neither
-                        else
-                            Both
-                    let longerWire, newSegIdx = addFakeSegs addType currWire segIndex intersect
-                    let newWire = 
-                        if newSegIdx = 0 then 
-                            let tmpWire, tmpIdx = addFakeSegs Previous longerWire newSegIdx intersect
-                            moveSegment model tmpWire.Segments[tmpIdx] dist //intersect
-                        elif newSegIdx = longerWire.Segments.Length-1 then
-                            let tmpWire, tmpIdx = addFakeSegs Next longerWire newSegIdx intersect
-                            moveSegment model tmpWire.Segments[tmpIdx] dist //intersect
-                        else
-                            moveSegment model longerWire.Segments[newSegIdx] dist
+        match intersects with
+            | intersect::_ ->
+                // printfn "%A" intersect.intersectType
+                let segIndex = 
+                    Map.tryFindKey (fun _ l -> l = intersect.line) segMap
+                    |> Option.defaultValue 0 //Shouldn't happen
+                let dist = LineMove (boxLinesToBoundingBox intersect.box) intersect.line
 
-                    let newIntersect =
-                        if contradiction then 
-                            let newIntersects = SmartHelpers.listDifference currIntersects intersects
-                            let unionBox = 
-                                if not (List.isEmpty newIntersects) then
-                                    Some (unionBoxLines intersect.box (List.map (fun x->x.box ) newIntersects))
-                                else
-                                    None
-                            if Option.isSome unionBox then
-                                {intersect with box = (Option.get unionBox)}
+                // let addType = 
+                //     if not contradiction then
+                //         if (segments[segIndex-1].Mode = Manual && segments[segIndex+1].Mode = Manual) || segments[segIndex].Mode = Manual then
+                //             Both
+                //         elif segments[segIndex-1].Mode = Manual then
+                //             Previous
+                //         elif segments[segIndex+1].Mode = Manual then
+                //             Next
+                //         else Neither
+                //     else
+                //         Both
+                //let longerWire, newSegIdx = addFakeSegs addType currWire segIndex intersect
+                let newWire = 
+                    // if newSegIdx = 0 then 
+                    //     let tmpWire, tmpIdx = addFakeSegs Previous longerWire newSegIdx intersect
+                    //     moveSegment model tmpWire.Segments[tmpIdx] dist //intersect
+                    // elif newSegIdx = longerWire.Segments.Length-1 then
+                    //     let tmpWire, tmpIdx = addFakeSegs Next longerWire newSegIdx intersect
+                    //     moveSegment model tmpWire.Segments[tmpIdx] dist //intersect
+                    // else
+                    //     moveSegment model longerWire.Segments[newSegIdx] dist
+
+                    moveSegment model currWire.Segments[segIndex] dist
+                    //find the bounding box we are moving around
+                    //direction the wire is moving to the side of the bounding box
+                    //create a bounding box in on that side
+                    //run smartChannels on this bounding box
+                let componentboundingBox = 
+                    boxLinesToBoundingBox (intersect.box)
+                let directionOfMovement: Edge = 
+                    if intersect.intersectType = Top || intersect.intersectType = Bottom then
+                        if dist > 0 then
+                            Right
+                        else
+                            Left
+                    else
+                        if dist > 0  then
+                            Bottom
+                        else
+                            Top
+                    
+                let channelBoundingBox = 
+                    match directionOfMovement with
+                    | Top -> 
+                        let topleft = {componentboundingBox.TopLeft with Y = componentboundingBox.TopLeft.Y-50.0}
+                        {TopLeft = topleft; W = componentboundingBox.W; H = 50.0}
+                    | Bottom ->
+                        let topleft = {componentboundingBox.TopLeft with Y = componentboundingBox.TopLeft.Y + componentboundingBox.H}
+                        {TopLeft = topleft; W = componentboundingBox.W; H = 50.0}
+                    | Left-> 
+                        let topleft = {componentboundingBox.TopLeft with X = componentboundingBox.TopLeft.X-50.0}
+                        {TopLeft = topleft; H = componentboundingBox.H; W = 50.0}
+                    | Right ->
+                        let topleft = {componentboundingBox.TopLeft with X = componentboundingBox.TopLeft.X + componentboundingBox.W}
+                        {TopLeft = topleft; H = componentboundingBox.H; W = 50.0}
+                        
+
+                let currIntersects = getIntersects model currWire
+                let contradiction = ((List.length currIntersects) >= (List.length intersects)) && intersects <> currIntersects
+
+                let newIntersect =
+                    if contradiction then 
+                        let newIntersects = SmartHelpers.listDifference currIntersects intersects
+                        let unionBox = 
+                            if not (List.isEmpty newIntersects) then
+                                Some (unionBoxLines intersect.box (List.map (fun x->x.box ) newIntersects))
                             else
-                                intersect
+                                None
+                        if Option.isSome unionBox then
+                            {intersect with box = (Option.get unionBox)}
                         else
-                            intersect  
-                    if newIntersect <> intersect then 
-                        wireRecursive newWire (newIntersect::(List.tail intersects))
-                    else    
-                        wireRecursive newWire (List.tail intersects)
-                | [] -> currWire
+                            intersect
+                    else
+                        intersect  
+                if newIntersect <> intersect then 
+                    wireRecursive newWire (newIntersect::(List.tail intersects)) (channelBoundingBox::channelBoundingBoxes)
+                else    
+                    wireRecursive newWire (List.tail intersects) (channelBoundingBox::channelBoundingBoxes)
+            | [] -> (currWire, channelBoundingBoxes)
     
     if not (List.isEmpty initIntersects) && startPos = segMap[0].start && destPos = segMap[(Map.count segMap) - 1].finish then 
-        wireRecursive wire initIntersects
+        wireRecursive wire initIntersects []
     else
-        autoroute model wire
+        ((autoroute model wire), [])

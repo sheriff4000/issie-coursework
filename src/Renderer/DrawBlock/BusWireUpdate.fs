@@ -29,7 +29,7 @@ let updateWire (model : Model) (wire : Wire) (reverse : bool) =
         |> Option.map reverseWire
     else 
         partialAutoroute model wire newPort false
-    |> Option.defaultValue (smartAutoroute model wire)
+    |> Option.defaultValue (fst (smartAutoroute model wire))
 /// Re-routes the wires in the model based on a list of components that have been altered.
 /// If the wire input and output ports are both in the list of moved components, 
 /// it does not re-route wire but instead translates it.
@@ -133,6 +133,7 @@ let update (msg : Msg) (model : Model) : Model*Cmd<Msg> =
                 InitialOrientation = Horizontal
             }
             |> smartAutoroute model
+            |> fst
         
         let newModel = updateWireSegmentJumps [wireId] (Optic.set (wireOf_ newWire.WId) newWire model)
         
@@ -502,6 +503,7 @@ let pasteWires (wModel : Model) (newCompIds : list<ComponentId>) : (Model * list
                             StartPos = portOnePos;
                     }
                     |> smartAutoroute wModel
+                    |> fst
                 ]
             | None -> []
 
