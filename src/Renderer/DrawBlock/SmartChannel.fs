@@ -68,12 +68,12 @@ let XCoordinateEachSegment (wire: Wire) =
     
 let getInOutSegments (channelOrientation: Orientation) (channel: BoundingBox) (wire: Wire)  =
         let segMap = WireToLineSegs wire
-        let channelBox = boundingBoxToBoxLines channel
+        //let channelBox = boundingBoxToBoxLines channel
         let channelIntersects (line: LineSeg) = 
-            let topIntersect = LineSegIntersect channelBox.top line
-            let leftIntersect = LineSegIntersect channelBox.left line
-            let botIntersect = LineSegIntersect channelBox.bottom line
-            let rightIntersect = LineSegIntersect channelBox.right line
+            let topIntersect = LineSegIntersect channel.Top line
+            let leftIntersect = LineSegIntersect channel.Left line
+            let botIntersect = LineSegIntersect channel.Bottom line
+            let rightIntersect = LineSegIntersect channel.Right line
             let topOut : Edge list = 
                 if Option.isSome topIntersect then
                     [Top]
