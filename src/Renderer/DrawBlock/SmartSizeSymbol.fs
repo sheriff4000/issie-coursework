@@ -48,44 +48,59 @@ type sizeHelpers = {
 // This function can only reshape 7 segment wires correctly with it's rerouting
 let resizeAndShift
     (wModel: Model)
-    (connections: ((Edge*Edge)*Wire) list)
+    (connections: (Edge*Edge) * Wire list)
     (symbolToSize: Symbol)
     (otherSymbol: Symbol)
-    (symbolOnTopOrLeft: bool)
-    (vertical: bool)
     (sizeHelpers: sizeHelpers)
     =
-    let firstEdges,firstWire = connections[0]
+    let firstEdges = fst connections
+    let firstWire =
+        connections
+        |> snd
+        |> List.item 0
 
-    let symbolPortNumberFloat = float (Option.get ( if vertical then (getPortPositionFromTopOrLeft symbolToSize firstWire) else (getPortPositionFromTopOrLeft symbolToSize firstWire) ))
+    let stackedVertically = (fst firstEdges) = Top || (fst firstEdges) = Bottom
     
-    let portDistanceSymbol = if vertical then getPortDistances symbolToSize (fst firstEdges) else getPortDistances symbolToSize (fst firstEdges)
-    let portDistanceOther = if vertical then getPortDistances otherSymbol (snd firstEdges) else getPortDistances otherSymbol (snd firstEdges)
+    let portDistanceSymbol = getPortDistances symbolToSize (fst firstEdges)
+    let portDistanceOther = getPortDistances otherSymbol (snd firstEdges)
 
-    let isTopOrLeft = if symbolOnTopOrLeft then 1.0 else -1.0
+    let hScale = (1.0, symbolToSize.HScale) ||> Option.defaultValue 
+    let vScale = (1.0, symbolToSize.VScale) ||> Option.defaultValue 
 
-    let wireshift = (firstWire.Segments[firstWire.Segments.Length / 2].Length ) * (firstWire.Segments[firstWire.Segments.Length / 2 - 1].Length |> sign |> float) * isTopOrLeft
-    let shift =if vertical then -symbolPortNumberFloat * (portDistanceOther - portDistanceSymbol) + wireshift else ( (symbolPortNumberFloat - 0.3) * (portDistanceSymbol - portDistanceOther) ) + wireshift
+    let scalingH = if stackedVertically then Some ((portDistanceOther / portDistanceSymbol) * hScale) else None
+    let scalingV = if not stackedVertically then Some ((portDistanceOther / portDistanceSymbol) * vScale) else None
 
-    let hScale = getScale symbolToSize.HScale
-    let vScale = getScale symbolToSize.VScale
+    let verticalNum = if stackedVertically then 1.0 else 0.0
+    let horizontalNum = if not stackedVertically then 1.0 else 0.0
 
-    let scalingH = if vertical then (portDistanceOther / portDistanceSymbol) * hScale else hScale
-    let scalingV = if not vertical then (portDistanceOther / portDistanceSymbol) * vScale else vScale
+    let symbolFirstPortPos = getPortXYPos firstWire symbolToSize portDistanceOther
+    let otherFirstPortPos = getPortXYPos firstWire otherSymbol portDistanceOther
 
-    let verticalNum = if vertical then 1.0 else 0.0
-    let horizontalNum = if not vertical then 1.0 else 0.0
+    let shift =
+        if stackedVertically
+        then otherFirstPortPos.X - symbolFirstPortPos.X
+        else otherFirstPortPos.Y - symbolFirstPortPos.Y
 
     let symbol' = 
         {
             symbolToSize with 
-                HScale = Some scalingH
-                VScale = Some scalingV
+                HScale = scalingH
+                VScale = scalingV
                 Pos = 
                     {
                         symbolToSize.Pos with 
                             X = symbolToSize.Pos.X + shift*verticalNum
                             Y = symbolToSize.Pos.Y + shift*horizontalNum
+                    }
+                LabelBoundingBox =
+                    {
+                        symbolToSize.LabelBoundingBox with 
+                            TopLeft =
+                                {
+                                    symbolToSize.LabelBoundingBox.TopLeft with 
+                                        X = symbolToSize.LabelBoundingBox.TopLeft.X + shift*verticalNum
+                                        Y = symbolToSize.LabelBoundingBox.TopLeft.Y + shift*horizontalNum
+                                }
                     }
         }
 
@@ -118,38 +133,16 @@ let reSizeSymbol
 
     match symbolToSize.Component.Type, otherSymbol.Component.Type with
     | Custom _, Custom _ ->
-
-        let bottomOfSymbol = symbolToSize.Pos.Y + symbolToSize.Component.H*(getScale symbolToSize.VScale)
-        let bottomOfOther = otherSymbol.Pos.Y + otherSymbol.Component.H*(getScale otherSymbol.VScale)
-        let topOfSymbol = symbolToSize.Pos.Y
-        let topOfOther = otherSymbol.Pos.Y
-
-        let symbolOnTop = bottomOfSymbol < topOfOther
-        let deadZoneV = inRange topOfSymbol topOfOther bottomOfOther || inRange bottomOfSymbol topOfOther bottomOfOther 
-                                || inRange topOfOther topOfSymbol bottomOfSymbol || inRange bottomOfOther topOfSymbol bottomOfSymbol
-
-        let rightOfSymbol = symbolToSize.Pos.X + symbolToSize.Component.W*(getScale symbolToSize.HScale)
-        let rightOfOther = otherSymbol.Pos.X + otherSymbol.Component.W*(getScale otherSymbol.HScale)
-        let leftOfSymbol = symbolToSize.Pos.X
-        let leftOfOther = otherSymbol.Pos.X
-
-        let symbolOnLeft = rightOfSymbol < leftOfOther
-        let deadZoneH = inRange rightOfSymbol leftOfOther rightOfOther || inRange leftOfSymbol leftOfOther rightOfOther 
-                                || inRange rightOfOther leftOfSymbol rightOfSymbol || inRange leftOfOther leftOfSymbol rightOfSymbol
+        let deadZoneV = inDeadZone symbolToSize otherSymbol false
+        let deadZoneH = inDeadZone symbolToSize otherSymbol true
 
         let adjacentConnections = getAdjacentConnections wModel symbolToSize otherSymbol
-        let verticalConnections =
-            adjacentConnections
-            |> List.filter (fun ((edge1, edge2), _) -> (symbolOnTop && edge1=Bottom && edge2=Top) || (not symbolOnTop && edge1=Top && edge2=Bottom))
-        let horizontalConnections =
-            adjacentConnections
-            |> List.filter (fun ((edge1, edge2), _) -> (symbolOnLeft && edge1=Right && edge2=Left) || (not symbolOnLeft && edge1=Left && edge2=Right))
+        let symbolEdge = adjacentConnections |> fst |> fst
 
-        match verticalConnections.Length, horizontalConnections.Length with
-        | x,_ when x>0 && not deadZoneV ->
-            resizeAndShift wModel verticalConnections symbolToSize otherSymbol symbolOnTop true sizeHelpers
-        | _,x when x>0 && not deadZoneH ->
-            resizeAndShift wModel horizontalConnections symbolToSize otherSymbol symbolOnLeft false sizeHelpers
-        | _,_ -> wModel
-
+        match symbolEdge with
+        | x when (x = Top || x = Bottom) && not deadZoneV ->
+            resizeAndShift wModel adjacentConnections symbolToSize otherSymbol sizeHelpers
+        | x when (x = Left || x = Right) && not deadZoneH ->
+            resizeAndShift wModel adjacentConnections symbolToSize otherSymbol sizeHelpers
+        | _ -> wModel
     | _, _ ->  wModel
