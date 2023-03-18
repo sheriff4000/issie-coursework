@@ -20,6 +20,8 @@ open Fable.Core.JsInterop
 open BuildUartHelpers
 open Node.ChildProcess
 open Node
+open SmartChannel
+open SmartHelpers
 
 module node = Node.Api
 
@@ -773,7 +775,91 @@ let update (msg : Msg) (model : Model): Model*Cmd<Msg> =
     | TestSmartChannel ->
         let bBoxes = model.BoundingBoxes
 
-        let allSymbols : (Symbol * Symbol) list = 
+
+        let checkAutoRouteBoundingBox (channel: BoundingBox) (side: Edge) : bool =
+            //returns bool saying if theres multiple wires being autorouted
+            let orientation =
+                if side = Top || side = Bottom then
+                    Horizontal
+                else 
+                    Vertical
+            //filter out all the mulitple segment wires in channel -> keeping the autorouted segments
+            let wireModel = model.Wire
+            let wiresInChannel = 
+                getWiresInChannel orientation channel wireModel
+
+            let segmentsInChannel =
+                wiresInChannel
+                |> List.map (fun x -> wireModel.Wires[x.Wire], x.StartSegment, x.EndSegment)
+                |> List.map (fun (wire, idx1, idx2) -> (SmartHelpers.getSegPositions wire idx1), (SmartHelpers.getSegPositions wire idx1))
+                |> List.filter (fun ((s1,f1),(s2,f2)) ->
+                    if  orientation = Horizontal then
+                        s1.Y = s2.Y
+                    else 
+                        s1.X = s2.X
+                    )
+                |> List.map (fun((s1,f1), (s2,f2)) -> s1)
+
+            if orientation = Horizontal then
+                let yPos = 
+                    segmentsInChannel
+                    |> List.map (fun start -> start.Y)
+                    |> List.countBy id
+                    |> List.filter (fun (_, count) -> count > 1)
+                if  (List.isEmpty yPos) then
+                    false
+                else 
+                    true
+            else    
+                let xPos = 
+                    segmentsInChannel
+                    |> List.map (fun start -> start.X)
+                    |> List.countBy id
+                    |> List.filter (fun (_, count) -> count > 1)
+                if  (List.isEmpty xPos) then
+                    false
+                else 
+                    true
+
+            
+        let componentToChannels (symbol: Symbol) =
+            let componentboundingBox :  BoundingBox = 
+                let comp = symbol.Component
+                let topLeft = {X = comp.X; Y = comp.Y}
+                {TopLeft = topLeft; H = comp.H; W = comp.W}
+            
+            let top  =
+                let topleft = {componentboundingBox.TopLeft with Y = componentboundingBox.TopLeft.Y-50.0}
+                {TopLeft = topleft; W = componentboundingBox.W; H = 50.0}
+            let bottom  =
+                let topleft = {componentboundingBox.TopLeft with Y = componentboundingBox.TopLeft.Y + componentboundingBox.H}
+                {TopLeft = topleft; W = componentboundingBox.W; H = 50.0}
+            let left =
+                let topleft = {componentboundingBox.TopLeft with X = componentboundingBox.TopLeft.X-50.0}
+                {TopLeft = topleft; H = componentboundingBox.H; W = 50.0}
+            let right  =
+                let topleft = {componentboundingBox.TopLeft with X = componentboundingBox.TopLeft.X + componentboundingBox.W}
+                {TopLeft = topleft; H = componentboundingBox.H; W = 50.0}
+            (top,bottom,left,right)   
+
+        let allAutoRouteChannels = 
+            let symbols = model.Wire.Symbol.Symbols
+            let symbolList = 
+                Map.values symbols 
+                |> List.ofSeq
+            
+            
+            symbolList
+            |> List.map (componentToChannels)
+            |> List.map (fun (top, bottom, left, right) -> ((top, Edge.Top), (bottom, Edge.Bottom), (left, Edge.Left), (right, Edge.Right)))
+            |> List.collect (fun (a,b,c,d) -> [a;b;c;d])
+            |> List.filter (fun (box, side) -> checkAutoRouteBoundingBox box side)
+            |> List.map (fun (box,side)-> box, (if (side = Top) || (side = Bottom) then Horizontal else Vertical))
+
+            
+        
+
+        let allComponentChannels : (Symbol * Symbol) list = 
             let symbols = model.Wire.Symbol.Symbols
             let symbolList = 
                 Map.values symbols 
@@ -819,30 +905,27 @@ let update (msg : Msg) (model : Model): Model*Cmd<Msg> =
                     | Some channel ->
                         print channel.W
                         {currModel with Wire = (SmartChannel.smartChannelRoute Vertical channel currModel.Wire)}
-        let newModel = 
-            allSymbols
-            |> List.fold (fun state symbols -> channelFolder state symbols) model
-        newModel, Cmd.none
-        // let rec channeler (currModel: Model) (symbolList: (Symbol * Symbol) list) =
-        //     match symbolList with
-        //     | (s1,s2)::tl -> 
-        //         let bBoxes = currModel.BoundingBoxes
-        //         getVerticalChannel bBoxes[s1.Id] bBoxes[s2.Id]
-        //         |> function 
-        //            | None -> 
-        //                 getHorizontalChannel bBoxes[s1.Id] bBoxes[s2.Id]
-        //                 |> function
-        //                     | None ->
-        //                         printfn "no horizontal or vertical channel"
-        //                         currModel
-        //                     | Some channel ->
-        //                         channeler {currModel with Wire = SmartChannel.smartChannelRoute Horizontal channel  currModel.Wire} tl
-        //                         //currModel
-        //             | Some channel ->
-        //                 channeler {currModel with Wire = SmartChannel.smartChannelRoute Vertical channel currModel.Wire} tl
-        //     | [] -> currModel
 
-        //(channeler model allSymbols), Cmd.none
+        let newModel = 
+            (model, allAutoRouteChannels)
+            ||> List.fold (fun currModel (box, orientation) -> {currModel with Wire = (SmartChannel.smartChannelRoute orientation box currModel.Wire)})
+        
+        
+        let newModel2 = 
+            let inList = 
+                let twoSelected = validateTwoSelectedSymbols model
+                if Option.isSome twoSelected then
+                    let symTuple = Option.get twoSelected
+                    [symTuple]
+                else
+                    allComponentChannels
+
+            
+            (newModel, inList)
+            ||> List.fold (fun state symbols -> channelFolder state symbols) 
+
+
+        newModel2, Cmd.none
 
 
     // | TestSmartChannel ->
