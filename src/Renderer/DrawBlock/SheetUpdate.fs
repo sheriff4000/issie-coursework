@@ -791,14 +791,14 @@ let update (msg : Msg) (model : Model): Model*Cmd<Msg> =
             let segmentsInChannel =
                 wiresInChannel
                 |> List.map (fun x -> wireModel.Wires[x.Wire], x.StartSegment, x.EndSegment)
-                |> List.map (fun (wire, idx1, idx2) -> (SmartHelpers.getSegPositions wire idx1), (SmartHelpers.getSegPositions wire idx1))
-                |> List.filter (fun ((s1,f1),(s2,f2)) ->
+                |> List.map (fun (wire, idx1, idx2) -> (SmartHelpers.getSegPositions wire idx1), (SmartHelpers.getSegPositions wire idx2))
+                |> List.filter (fun ((s1,_),(s2,_)) ->
                     if  orientation = Horizontal then
                         s1.Y = s2.Y
                     else 
                         s1.X = s2.X
                     )
-                |> List.map (fun((s1,f1), (s2,f2)) -> s1)
+                |> List.map (fun((s1,_), (_,_)) -> s1)
 
             if orientation = Horizontal then
                 let yPos = 
@@ -905,7 +905,8 @@ let update (msg : Msg) (model : Model): Model*Cmd<Msg> =
                     | Some channel ->
                         print channel.W
                         {currModel with Wire = (SmartChannel.smartChannelRoute Vertical channel currModel.Wire)}
-
+    
+        printfn $"{List.length allAutoRouteChannels}"
         let newModel = 
             (model, allAutoRouteChannels)
             ||> List.fold (fun currModel (box, orientation) -> {currModel with Wire = (SmartChannel.smartChannelRoute orientation box currModel.Wire)})

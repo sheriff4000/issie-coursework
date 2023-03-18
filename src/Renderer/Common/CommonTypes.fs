@@ -278,10 +278,10 @@ module CommonTypes
             H: float
         }
         member this.Centre() = this.TopLeft + {X=this.W/2.; Y=this.H/2.}
-        member this.Top= {Start = this.TopLeft; Finish = {X= this.TopLeft.X + this.W; Y = this.TopLeft.Y}}
+        member this.Top = {Start = this.TopLeft; Finish = {X= this.TopLeft.X + this.W; Y = this.TopLeft.Y}}
         member this.Bottom = {Start = {X = this.TopLeft.X; Y = this.TopLeft.Y + this.H}; Finish = {X= this.TopLeft.X + this.W; Y = this.TopLeft.Y + this.H}}
         member this.Left = {Start = {X = this.TopLeft.X; Y = this.TopLeft.Y}; Finish = {X= this.TopLeft.X; Y = this.TopLeft.Y + this.H}}
-        member this.Right = {Start = {X = this.TopLeft.X + this.W; Y = this.TopLeft.Y + this.H}; Finish = {X= this.TopLeft.X + this.W; Y = this.TopLeft.Y + this.H}}
+        member this.Right = {Start = {X = this.TopLeft.X + this.W; Y = this.TopLeft.Y}; Finish = {X= this.TopLeft.X + this.W; Y = this.TopLeft.Y + this.H}}
     
     
     type ScaleAdjustment =
