@@ -126,15 +126,17 @@ let reOrderPorts
             else true
 
     //input each wire from connected wire list
+    //needs index
     let anyCrossingPorts (symbol1:Symbol) (symbol2:Symbol)  (model: SymbolT.Model) (wire: Wire)=
+        let port1 = (SmartHelpers.getPortFromWire model symbol1 wire)
         let port1Pos  =  
-                let port1 = (SmartHelpers.getPortFromWire model symbol1 wire)
+                
                 SymbolUpdatePortHelpers.getPosIndex symbol1 (getPortPos symbol1 port1) (symbol1.PortMaps.Orientation[port1.Id])
- 
+        let port2 = (SmartHelpers.getPortFromWire model symbol2 wire)
         let port2Pos = 
-                let port2 = (SmartHelpers.getPortFromWire model symbol2 wire)
+                
                 SymbolUpdatePortHelpers.getPosIndex symbol2 (getPortPos symbol2 port2) (symbol2.PortMaps.Orientation[port2.Id])
-        port1Pos, port2Pos
+        (port1Pos, symbol1.PortMaps.Orientation[port1.Id]), (port2Pos, symbol2.PortMaps.Orientation[port2.Id])
     
     let changePortEdge (edge:Edge) (symbol:Symbol) (portId:string) =
         let h,w = getRotatedHAndW symbol
@@ -400,9 +402,12 @@ let reOrderPorts
         let secondSymbolList = 
             wire
             |> List.map (anyCrossingPorts symbol1 otherSymbol model)
-            |> List.sort
+            |> List.sort//make multiple lists for top bottom left right?
             |> List.unzip
             |> (fun (x,y) -> y)
+        //the port ordering is dependent on edge index:
+        //if they have the same edge then list.sort
+        //if they have different ports then list.sort descending
         if (List.sortDescending secondSymbolList) = secondSymbolList
         then 
             //correct port indexing order
