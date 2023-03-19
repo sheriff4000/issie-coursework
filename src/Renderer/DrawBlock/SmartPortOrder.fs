@@ -307,6 +307,7 @@ let reOrderPorts
         let port1 = SmartHelpers.getPortFromWire model symbolToChange wire
         let port2 = SmartHelpers.getPortFromWire model otherSymbol wire
         let portEdge = symbolToChange.PortMaps.Orientation[port1.Id]
+        let position = getSymbolPos symbolToChange otherSymbol
         let largestEdge = 
                         let TopList = otherSymbol.PortMaps.Order[Top] |> SmartHelpers.combineLists getPorts
                         let BottomList = otherSymbol.PortMaps.Order[Bottom] |> SmartHelpers.combineLists getPorts
@@ -345,7 +346,40 @@ let reOrderPorts
                         then changeEdge (snd largestEdge[0])
                         else changeEdge (newEdge edge)
                 
+    let comparePortEdge'' (otherSymbol:Symbol) (model: SymbolT.Model) (symbolToChange:Symbol) (wire:Wire) =
+        let getPorts = List.map (fun (x: Port) -> string x.Id) (connectedPorts symbolToChange otherSymbol model wModel)
+        let port1 = SmartHelpers.getPortFromWire model symbolToChange wire
+        let port2 = SmartHelpers.getPortFromWire model otherSymbol wire
+        let portEdge = symbolToChange.PortMaps.Orientation[port1.Id]
+        let position = getSymbolPos symbolToChange otherSymbol
+        let largestEdge = 
+                        let TopList = otherSymbol.PortMaps.Order[Top] |> SmartHelpers.combineLists getPorts
+                        let BottomList = otherSymbol.PortMaps.Order[Bottom] |> SmartHelpers.combineLists getPorts
+                        let LeftList = otherSymbol.PortMaps.Order[Left] |> SmartHelpers.combineLists getPorts
+                        let RightList = otherSymbol.PortMaps.Order[Right] |> SmartHelpers.combineLists getPorts
+                        let PortList = [TopList, Top; BottomList, Bottom; LeftList, Left; RightList,Right]
+
+                        List.filter (fun  ((x:string List),y) -> x.Length > 0) PortList
+                        |> List.sortByDescending (fun ((x:string List),y) -> x.Length) 
         
+        let changeEdge (edge:Edge)=
+            match edge with
+                |Top -> if portEdge = Bottom then symbolToChange else changePortEdge Bottom symbolToChange (port1.Id)
+                |Left -> if portEdge = Right then symbolToChange else changePortEdge Right symbolToChange (port1.Id)
+                |Bottom -> if portEdge = Top then symbolToChange else changePortEdge Top symbolToChange (port1.Id)
+                |Right -> if portEdge = Left then symbolToChange else changePortEdge Left symbolToChange (port1.Id)
+        
+        let edge = otherSymbol.PortMaps.Orientation[port2.Id]
+        let newEdge edge'= match edge' with
+                                    | Top -> Bottom
+                                    | Bottom -> Top
+                                    | _ -> edge'        
+        if (position <> "Bottom")
+        then 
+            changeEdge (newEdge edge)
+        else
+            changeEdge edge
+
     let checkPortPositions (wire:Wire List) (symbol1: Symbol) (model:DrawModelType.SymbolT.Model)=
         let secondSymbolList = 
             wire
@@ -389,7 +423,7 @@ let reOrderPorts
     let wires': Wire List = SmartHelpers.getConnectedWires testOtherPorts otherSymbol testWireModel  
     let reOrderPortEdges = 
         match anyInterconnected wires with
-        | true -> List.fold (comparePortEdge otherSymbol changedTestModel.Symbol) testOtherPorts wires
+        | true -> List.fold (comparePortEdge'' otherSymbol changedTestModel.Symbol) testOtherPorts wires
         | false -> testOtherPorts
     let newWireModel = updateWires reOrderPortEdges wModel symbolToOrder
 
