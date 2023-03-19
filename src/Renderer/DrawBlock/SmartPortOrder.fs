@@ -366,22 +366,35 @@ let reOrderPorts
             //if position = left then below is fine but with top to top and bottom to bottom
             //if position = right, left and left?
             //if bottom/top - left to left/right to right but bottom to bottom and top to bottom
-            match edge with
-                |Top -> if portEdge = Bottom then symbolToChange else changePortEdge Bottom symbolToChange (port1.Id)
-                |Left -> if portEdge = Right then symbolToChange else changePortEdge Right symbolToChange (port1.Id)
-                |Bottom -> if portEdge = Top then symbolToChange else changePortEdge Top symbolToChange (port1.Id)
-                |Right -> if portEdge = Left then symbolToChange else changePortEdge Left symbolToChange (port1.Id)
+            match position with 
+            |"Top" -> match edge with
+                        |Top -> if portEdge = Top then symbolToChange else changePortEdge Top symbolToChange (port1.Id)
+                        |Left -> if portEdge = Left then symbolToChange else changePortEdge Left symbolToChange (port1.Id)
+                        |Bottom -> if portEdge = Top then symbolToChange else changePortEdge Top symbolToChange (port1.Id)
+                        |Right -> if portEdge = Right then symbolToChange else changePortEdge Right symbolToChange (port1.Id)
+            | "Bottom" -> match edge with
+                            |Top -> if portEdge = Bottom then symbolToChange else changePortEdge Bottom symbolToChange (port1.Id)
+                            |Left -> if portEdge = Left then symbolToChange else changePortEdge Left symbolToChange (port1.Id)
+                            |Bottom -> if portEdge = Bottom then symbolToChange else changePortEdge Bottom symbolToChange (port1.Id)
+                            |Right -> if portEdge = Right then symbolToChange else changePortEdge Right symbolToChange (port1.Id)
+            | "Left" -> match edge with
+                            |Top -> if portEdge = Top then symbolToChange else changePortEdge Top symbolToChange (port1.Id)
+                            |Left -> if portEdge = Left then symbolToChange else changePortEdge Left symbolToChange (port1.Id)
+                            |Bottom -> if portEdge = Bottom then symbolToChange else changePortEdge Bottom symbolToChange (port1.Id)
+                            |Right -> if portEdge = Left then symbolToChange else changePortEdge Left symbolToChange (port1.Id)
+            | "Right" -> match edge with
+                            |Top -> if portEdge = Top then symbolToChange else changePortEdge Top symbolToChange (port1.Id)
+                            |Left -> if portEdge = Right then symbolToChange else changePortEdge Right symbolToChange (port1.Id)
+                            |Bottom -> if portEdge = Bottom then symbolToChange else changePortEdge Bottom symbolToChange (port1.Id)
+                            |Right -> if portEdge = Right then symbolToChange else changePortEdge Right symbolToChange (port1.Id)
         
         let edge = otherSymbol.PortMaps.Orientation[port2.Id]
         let newEdge edge'= match edge' with
                                     | Top -> Bottom
                                     | Bottom -> Top
-                                    | _ -> edge'        
-        if (position <> "Bottom")
-        then 
-            changeEdge (newEdge edge) position//new edge is based on current edge and position
-        else
-            changeEdge edge position
+                                    | _ -> edge'       
+        printf($"Position: {position}");
+        changeEdge edge position
 
     let checkPortPositions (wire:Wire List) (symbol1: Symbol) (model:DrawModelType.SymbolT.Model)=
         let secondSymbolList = 
