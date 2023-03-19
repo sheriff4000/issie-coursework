@@ -362,7 +362,10 @@ let reOrderPorts
                         List.filter (fun  ((x:string List),y) -> x.Length > 0) PortList
                         |> List.sortByDescending (fun ((x:string List),y) -> x.Length) 
         
-        let changeEdge (edge:Edge)=
+        let changeEdge (edge:Edge)(position:string)=
+            //if position = left then below is fine but with top to top and bottom to bottom
+            //if position = right, left and left?
+            //if bottom/top - left to left/right to right but bottom to bottom and top to bottom
             match edge with
                 |Top -> if portEdge = Bottom then symbolToChange else changePortEdge Bottom symbolToChange (port1.Id)
                 |Left -> if portEdge = Right then symbolToChange else changePortEdge Right symbolToChange (port1.Id)
@@ -376,9 +379,9 @@ let reOrderPorts
                                     | _ -> edge'        
         if (position <> "Bottom")
         then 
-            changeEdge (newEdge edge)
+            changeEdge (newEdge edge) position//new edge is based on current edge and position
         else
-            changeEdge edge
+            changeEdge edge position
 
     let checkPortPositions (wire:Wire List) (symbol1: Symbol) (model:DrawModelType.SymbolT.Model)=
         let secondSymbolList = 
