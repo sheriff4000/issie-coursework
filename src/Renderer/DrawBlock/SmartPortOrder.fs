@@ -130,13 +130,13 @@ let reOrderPorts
     let anyCrossingPorts (symbol1:Symbol) (symbol2:Symbol)  (model: SymbolT.Model) (wire: Wire)=
         let port1 = (SmartHelpers.getPortFromWire model symbol1 wire)
         let port1Pos  =  
-                
-                SymbolUpdatePortHelpers.getPosIndex symbol1 (getPortPos symbol1 port1) (symbol1.PortMaps.Orientation[port1.Id])
+                SmartHelpers.getPortPositionFromTopOrLeft symbol1 wire
+                //SymbolUpdatePortHelpers.getPosIndex symbol1 (getPortPos symbol1 port1) (symbol1.PortMaps.Orientation[port1.Id])
         let port2 = (SmartHelpers.getPortFromWire model symbol2 wire)
         let port2Pos = 
-                
-                SymbolUpdatePortHelpers.getPosIndex symbol2 (getPortPos symbol2 port2) (symbol2.PortMaps.Orientation[port2.Id])
-        (port1Pos, symbol1.PortMaps.Orientation[port1.Id]), (port2Pos, symbol2.PortMaps.Orientation[port2.Id])
+                SmartHelpers.getPortPositionFromTopOrLeft symbol2 wire
+                //SymbolUpdatePortHelpers.getPosIndex symbol2 (getPortPos symbol2 port2) (symbol2.PortMaps.Orientation[port2.Id])
+        (symbol1.PortMaps.Orientation[port1.Id], port1Pos), (symbol2.PortMaps.Orientation[port2.Id], port2Pos)
     
     let changePortEdge (edge:Edge) (symbol:Symbol) (portId:string) =
         let h,w = getRotatedHAndW symbol
@@ -399,22 +399,73 @@ let reOrderPorts
         changeEdge edge position
 
     let checkPortPositions (wire:Wire List) (symbol1: Symbol) (model:DrawModelType.SymbolT.Model)=
+        let firstSymbolList =
+            wire
+            |> List.map (anyCrossingPorts symbol1 otherSymbol model)//separate into 4 based on otherSymbol
+            |> List.sort//make multiple lists for top bottom left right?
+        let funTest ((x:Edge,y),(z:Edge,a))= 
+            x = z
+        let funTest2 ((x:Edge,y),(z:Edge,a))= 
+            x <> z
+        let position = getSymbolPos symbol1 otherSymbol
+        let checkTopFun position =
+            match position with
+            |"Left" -> (fun ((x:Edge,y),(z:Edge,a)) -> if x <> z then false else if x = Left || x = Right then false else true)
+            |"Right" -> (fun ((x:Edge,y),(z:Edge,a)) -> if x <> z then false else if x = Left || x = Right then false else true)
+            | "Top" -> (fun ((x:Edge,y),(z:Edge,a)) -> if x <> z then false else if x = Top || x = Bottom then false else true)
+            | "Bottom" -> (fun ((x:Edge,y),(z:Edge,a)) -> if x <> z then false else if x = Top || x = Bottom then false else true)
+        let checkTopFun2 position =
+            match position with
+            |"Left" -> (fun ((x:Edge,y),(z:Edge,a)) -> if x <> z then true else if x = Left || x = Right then true else false)
+            |"Right" -> (fun ((x:Edge,y),(z:Edge,a)) -> if x <> z then true else if x = Left || x = Right then true else false)
+            | "Top" -> (fun ((x:Edge,y),(z:Edge,a)) -> if x <> z then true else if x = Top || x = Bottom then true else false)
+            | "Bottom" -> (fun ((x:Edge,y),(z:Edge,a)) -> if x <> z then true else if x = Top || x = Bottom then true else false)
+        let lstTop = List.filter funTest firstSymbolList
+        let lstTop2 = List.filter funTest2 firstSymbolList
+        let lstTop' = List.filter (checkTopFun position) firstSymbolList
+        let lstTop2' = List.filter (checkTopFun2 position) firstSymbolList
+        let checkTop =
+            printf($"list 1 {lstTop'}")
+            lstTop'
+            |> List.sortBy (fun ((x,y:int option),(z,a)) -> y)
+            |> List.unzip
+            |> fun (x,y) -> y
+        let checkTop2 = 
+            printf($"list 2 {lstTop2'}")
+            lstTop2'
+            |> List.sortBy (fun ((x,y:int option),(z,a)) -> y)
+            |> List.unzip
+            |> fun (x,y) -> y
+        let checkSame = 
+            if (List.sortByDescending (fun (x,y:int option) -> y)) checkTop = checkTop
+            then false
+            else true
+
+        let checkDifferent = 
+            if (List.sortBy (fun (x,y:int option) -> y) checkTop2) = checkTop2
+            then false
+            else true
         let secondSymbolList = 
             wire
-            |> List.map (anyCrossingPorts symbol1 otherSymbol model)
+            |> List.map (anyCrossingPorts symbol1 otherSymbol model)//separate into 4 based on otherSymbol
             |> List.sort//make multiple lists for top bottom left right?
             |> List.unzip
             |> (fun (x,y) -> y)
         //the port ordering is dependent on edge index:
         //if they have the same edge then list.sort
         //if they have different ports then list.sort descending
-        if (List.sortDescending secondSymbolList) = secondSymbolList
+        (*if (List.sortDescending secondSymbolList) = secondSymbolList
         then 
             //correct port indexing order
             false
         else
             //incorrect port indexing order
-            true
+            true*)
+        printfn($" different {checkDifferent}")
+        printfn($"same {checkSame}")
+        if checkDifferent = false && checkSame = false
+        then false
+        else true
 
     
     let rec changeSymbol (symbol':Symbol) (wires:Wire List) (model:Model)(n: int) = 
@@ -442,7 +493,7 @@ let reOrderPorts
                                 Symbol = {sModel with Symbols = Map.add testOtherPorts.Id testOtherPorts sModel.Symbols}
                             }
     let wires': Wire List = SmartHelpers.getConnectedWires testOtherPorts otherSymbol testWireModel  
-    let reOrderPortEdges = 
+    let reOrderPortEdges = //fix
         match anyInterconnected wires with
         | true -> List.fold (comparePortEdge'' otherSymbol changedTestModel.Symbol) testOtherPorts wires
         | false -> testOtherPorts
