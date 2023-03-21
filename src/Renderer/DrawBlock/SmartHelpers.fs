@@ -197,11 +197,15 @@ let getPortPositionFromTopOrLeft
             |> snd
             |> List.findIndex (fun x -> x=portId)
         
-        let edgeName = fst edge[0]
-        if edgeName = Top || edgeName = Right
-        then 
-            Some ((snd edge[0]).Length - index)
-        else Some (index + 1)
+        // let edgeName = fst edge[0]
+        // if edgeName = Top || edgeName = Right
+        // then 
+        //     Some ((snd edge[0]).Length - index)
+        // else Some (index + 1)
+
+        match fst edge[0] with
+        | Top | Right -> Some ((snd edge[0]).Length - index)
+        | Bottom | Left -> Some (index + 1)
     else None
 
 // HLP23: Luke
@@ -314,6 +318,59 @@ let portsOnEdge
     symbol.PortMaps.Order.Item edge
     |> List.length
 
+// HLP23: Luke
+// This function will return the port ID when given a symbol, edge and the port posistion "distance" from the Top/Left (depenind on the edge)
+// This is to be used after getPortPositionFromTopOrLeft to go back to the correct port ordering
+let getPortIDFromTopOrLeft
+    (symbol: Symbol)
+    (edge: Edge)
+    (portNumber: int)
+    : string
+    =
+    let portIndex = 
+        match edge with
+        | Top | Right -> portsOnEdge symbol edge - portNumber
+        | Bottom | Left -> portNumber - 1
+
+    Map.find edge symbol.PortMaps.Order
+    |> List.item portIndex
+
+// HLP23: Luke
+// This function takes in two symbols and returns the port ids for symbolToChange to swap so all wires are
+// as "straight as they can be"/have the smallest middle segment.
+// This function is intended to be used with SmartPortReordering so SmartSizing can create straight wires
+let portMapping
+    (wModel: Model)
+    (symbolToChange: Symbol)
+    (otherSymbol: Symbol)
+    : (string*string) list
+    =
+    let adjacentConnections = getAdjacentConnections wModel symbolToChange otherSymbol
+    let symbolEdge = adjacentConnections |> fst |> fst
+
+    let portsSymbol = portsOnEdge symbolToChange symbolEdge
+
+    let rec portMap i posList =
+        match posList with
+        | (pos1,pos2)::tl ->
+            if (pos2 > portsSymbol-i)
+            then List.append [pos1,portsSymbol-i] (portMap (i+1) tl)
+            else List.append [pos1,pos2] (portMap i tl)
+        | [] -> []
+
+    adjacentConnections
+    |> snd
+    |> List.map (fun wire ->
+        Option.get (getPortPositionFromTopOrLeft symbolToChange wire),
+        Option.get (getPortPositionFromTopOrLeft otherSymbol wire) )
+    |> List.sortByDescending id
+    |> portMap 0
+    |> List.filter (fun (x,y) -> x <> y)
+    |> List.map (fun (x,y) ->
+        getPortIDFromTopOrLeft symbolToChange symbolEdge x
+        , getPortIDFromTopOrLeft symbolToChange symbolEdge y)
+
+
 //HLP23: AUTHOR Ewan
 //This function returns a list of all the elements in both input lists
 let combineLists (list1: 'a List) (list2: 'a List) = 
@@ -327,41 +384,6 @@ let getConnectedWires (symbol1: Symbol) (symbol2: Symbol) (model:Model) =
     let wiresSymbol1 = BusWireUpdateHelpers.getConnectedWires model [symbol1.Id]
     let wiresSymbol2 = BusWireUpdateHelpers.getConnectedWires model [symbol2.Id]
     combineLists wiresSymbol1 wiresSymbol2
-
-// HLP23: Luke
-// This function takes in two symbols and returns the port numbers for symbolToChange so all wires are
-// as "straight as they can be"/have the smallest middle segment.
-// This function is intended to be used with SmartPortReordering so SmartSizing can create straight wires
-let portMapping
-    (wModel: Model)
-    (symbolToChange: Symbol)
-    (otherSymbol: Symbol)
-    : (int*int) list
-    =
-    let adjacentConnections = getAdjacentConnections wModel symbolToChange otherSymbol
-
-    let portsSymbol = 
-        adjacentConnections
-        |> fst
-        |> fst
-        |> portsOnEdge symbolToChange
-
-    let rec portMap i posList =
-        match posList with
-        | (pos1,pos2)::tl ->
-            if (pos2 > portsSymbol-i)
-            then List.append [pos1,portsSymbol-i] (portMap (i+1) tl)
-            else List.append [pos1,pos2] (portMap i tl)
-        | [] -> []
-
-    adjacentConnections
-    |> snd
-    |> List.map(fun wire ->
-        Option.get(getPortPositionFromTopOrLeft symbolToChange wire),
-        Option.get(getPortPositionFromTopOrLeft otherSymbol wire) )
-    |> List.sortByDescending id
-    |> portMap 0
-    |> List.filter (fun (x,y) -> x <> y)
 
 //HLP23: AUTHOR Ewan
 //Given a wire connected to a symbol, this function returns the associated port
