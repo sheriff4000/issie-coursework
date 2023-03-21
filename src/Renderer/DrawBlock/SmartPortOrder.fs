@@ -42,7 +42,7 @@ let reOrderPorts
         : BusWireT.Model =
     printfn $"ReorderPorts: ToOrder:{symbolToOrder.Component.Label}, Other:{otherSymbol.Component.Label}"
     let sModel = wModel.Symbol
-
+    printfn $"PORT LIST {sModel.Symbols[symbolToOrder.Id].PortMaps}"
     let updateWires (symbol:Symbol) (model:Model) (originalSymbol:Symbol) = 
         (helpers.UpdateSymbolWires ({model with Symbol = {model.Symbol with Symbols = Map.add symbol.Id symbol model.Symbol.Symbols}})  originalSymbol.Id) 
     
@@ -86,14 +86,94 @@ let reOrderPorts
         |> List.map orderTupleByWireId
         |> List.distinct
 
+    let isInterconnected' (fstWire,sndWire) (position:string)=
+        let fstWireAseg = BusWire.getAbsSegments fstWire
+        let sndWireAseg = BusWire.getAbsSegments sndWire
+        let compareSegments (sndWire: ASegment list) (seg:ASegment) =
+            let compareY (seg:ASegment) (wireSeg:ASegment)=
+                let isTaller = wireSeg.Start.Y > seg.Start.Y
+                if wireSeg.Start.X >= seg.Start.X
+                then 
+                    if wireSeg.Start.X <= seg.End.X
+                    then 
+                        [isTaller]
+                    else 
+                        []
+                else 
+                    if wireSeg.End.X >= seg.Start.X
+                    then 
+                        [isTaller]
+                    else 
 
+                        []
+            let compareX (seg:ASegment) (wireSeg:ASegment)= 
+                let isLeft = wireSeg.Start.X > seg.Start.X
+                if wireSeg.Start.Y >= seg.Start.Y
+                then 
+                    if wireSeg.Start.Y <= seg.End.Y
+                    then 
+                        [isLeft]
+                    else 
+                        []
+                else 
+                    if wireSeg.End.Y >= seg.Start.Y
+                    then 
+                        [isLeft]
+                    else 
+
+                        []
+            match position with 
+            | "Left" -> List.collect (compareY seg) sndWire
+            | "Right" -> List.collect (compareY seg) sndWire
+            | "Top" -> List.collect (compareX seg) sndWire
+            | "Bottom" -> List.collect (compareX seg) sndWire
+            
+        let lst = List.collect (compareSegments sndWireAseg) fstWireAseg
+                               |> List.distinct                      
+        if lst.Length <> 1
+        then 
+            //is interconnected
+            //printfn $"INTERCONNECTED"
+            true
+        else 
+            //not interconnected
+            //printfn $"NOT INTERCONNECTED"
+            false
+    let getSymbolPos (symbol1: Symbol) (symbol2: Symbol) = //gets symbol positioning with respect to the other
+        let xDifference = symbol1.Pos.X - symbol2.Pos.X
+        let yDifference = symbol1.Pos.Y - symbol2.Pos.Y
+        if (abs xDifference) < (abs yDifference)
+        then
+            printfn "Vertical"
+            if yDifference > 0
+            then 
+                //symbol1 is above symbol 2
+                "Top"
+            else
+                //symbol1 is below symbol 2
+                "Bottom"
+        else 
+            printfn "Horizontal"
+            if xDifference > 0 
+            then
+                //symbol1 is to the left of symbol1
+                "Left"
+            else
+                //symbol1 is to the right of symbol2
+                "Right"
+    printfn $"{(getSymbolPos symbolToOrder otherSymbol)}"
+    //get wires that are not connected to both symbols by getting wires only connected to that one symbol
+    //maybe use list.filter
+    
     let swapInterconnectedPorts  (model:SymbolT.Model) (symbol:Symbol) (fstWire,sndWire)=
-        match SmartHelpers.isInterconnected (fstWire,sndWire) with
-        | false -> symbol
+        let position = getSymbolPos symbolToOrder otherSymbol
+        match isInterconnected' (fstWire,sndWire) position with//SmartHelpers.isInterconnected (fstWire,sndWire) with
+        | false -> printfn $"not intersecting"
+                   symbol
         | true ->
                  let port1 = SmartHelpers.getPortFromWire model symbol fstWire
                  let port2 = SmartHelpers.getPortFromWire model symbol sndWire
-         
+                 printfn $"intersecting {port1.Id} {port2.Id}"
                  swapPorts symbol port1 port2
 
     let getAllInterconnected (model: Model) (symbol:Symbol) (wireList:Wire List) = 
@@ -102,7 +182,7 @@ let reOrderPorts
             let changeSymbol = swapInterconnectedPorts model.Symbol model.Symbol.Symbols[symbol1.Id] pair
             if changeSymbol <> model.Symbol.Symbols[symbol1.Id]
             then 
-                let newWireModel = updateWires changeSymbol model symbolToOrder
+                let newWireModel = updateWires changeSymbol model model.Symbol.Symbols[symbol1.Id]//symbolToOrder
                 let newWireList = 
                                   newWireModel
                                   |> SmartHelpers.getConnectedWires symbolToOrder otherSymbol
@@ -156,31 +236,7 @@ let reOrderPorts
         let wires = SmartHelpers.getConnectedWires symbol1 symbol2 wireModel
         List.map (SmartHelpers.getPortFromWire model symbol2) wires
 
-    let getSymbolPos (symbol1: Symbol) (symbol2: Symbol) = //gets symbol positioning with respect to the other
-        let xDifference = symbol1.Pos.X - symbol2.Pos.X
-        let yDifference = symbol1.Pos.Y - symbol2.Pos.Y
-        if (abs xDifference) < (abs yDifference)
-        then
-            printfn "Vertical"
-            if yDifference > 0
-            then 
-                //symbol1 is above symbol 2
-                "Top"
-            else
-                //symbol1 is below symbol 2
-                "Bottom"
-        else 
-            printfn "Horizontal"
-            if xDifference > 0 
-            then
-                //symbol1 is to the left of symbol1
-                "Left"
-            else
-                //symbol1 is to the right of symbol2
-                "Right"
-    printfn $"{(getSymbolPos symbolToOrder otherSymbol)}"
-    //get wires that are not connected to both symbols by getting wires only connected to that one symbol
-    //maybe use list.filter
+    
 
     let reorderUnconnectedWires (otherSymbol:Symbol) (symbolToChange:Symbol) (model:SymbolT.Model) (wireModel:Model) = 
         let getSingleConnectedWires = //wires only connected to symbolToChange
