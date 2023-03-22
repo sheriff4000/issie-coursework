@@ -589,9 +589,10 @@ let reOrderPorts
         SmartHelpers.getConnectedWires testOtherPorts otherSymbol testWireModel
 
     let reOrderPortEdges = //fix
-        match anyInterconnected wires with
-        | true -> List.fold (comparePortEdge'' otherSymbol changedTestModel.Symbol) testOtherPorts wires'
-        | false -> testOtherPorts
+      //  match anyInterconnected wires with
+       // | true -> 
+        List.fold (comparePortEdge'' otherSymbol changedTestModel.Symbol) testOtherPorts wires'
+        //| false -> testOtherPorts
 
     let newWireModel = updateWires reOrderPortEdges wModel symbolToOrder
 
@@ -624,12 +625,12 @@ let reOrderPorts
         | Mux2 -> changeMux
         | _ ->
             let newSymbol =
-                changeSymbol reOrderPortEdges newWires changedModel 0 //|> testPortMapping
+                changeSymbol reOrderPortEdges newWires changedModel 0 //|> testPortMapping sometimes has errors so need something to check if not adjacent
 
             let newWireModel = updateWires newSymbol changedModel symbolToOrder
 
             newSymbol
-            //|> reorderUnconnectedWires' otherSymbol newWireModel.Symbol newWireModel
+            |> reorderUnconnectedWires' otherSymbol newWireModel.Symbol newWireModel
 
     let newChangedWires =
         match symbolToOrder.Component.Type with
