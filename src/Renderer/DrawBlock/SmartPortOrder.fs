@@ -90,39 +90,60 @@ let reOrderPorts
         |> List.map orderTupleByWireId
         |> List.distinct
 
-    let isInterconnected' (fstWire, sndWire) (position: string) =
+    let isInterconnected' (position: string) (fstWire, sndWire) =
         let fstWireAseg = BusWire.getAbsSegments fstWire
         let sndWireAseg = BusWire.getAbsSegments sndWire
 
         let compareSegments (sndWire: ASegment list) (seg: ASegment) =
             let compareY (seg: ASegment) (wireSeg: ASegment) =
+                
                 let isTaller = wireSeg.Start.Y > seg.Start.Y
+                match seg.Start.X < seg.End.X with
+                |true -> 
+                        if wireSeg.Start.X >= seg.Start.X then
+                            if wireSeg.Start.X <= seg.End.X then [ isTaller ] else []
+                        else if wireSeg.End.X >= seg.Start.X then
+                            [ isTaller ]
+                        else
 
-                if wireSeg.Start.X >= seg.Start.X then
-                    if wireSeg.Start.X <= seg.End.X then [ isTaller ] else []
-                else if wireSeg.End.X >= seg.Start.X then
-                    [ isTaller ]
-                else
+                                []
+                |false -> 
+                          if wireSeg.Start.X <= seg.Start.X then
+                            if wireSeg.Start.X >= seg.End.X then [ isTaller ] else []
+                          else if wireSeg.End.X <= seg.Start.X then
+                                [ isTaller ]
+                            else
 
-                    []
+                                    []
 
             let compareX (seg: ASegment) (wireSeg: ASegment) =
+                //printfn $"SEGMENT COMPARE {seg.Start.X}, {seg.Start.Y}, SECOND {wireSeg.Start.X}, {wireSeg.Start.Y}"
                 let isLeft = wireSeg.Start.X > seg.Start.X
+                match seg.Start.Y < seg.End.Y with
+                |true -> printfn $"CHECKPOINT"//DEBUGGING REQUIRED
+                         if wireSeg.Start.Y >= seg.Start.Y then
+                            if wireSeg.Start.Y <= seg.End.Y then [ isLeft ] else []
+                         else if wireSeg.End.Y >= seg.Start.Y then
+                                [ isLeft ]
+                         else
 
-                if wireSeg.Start.Y >= seg.Start.Y then
-                    if wireSeg.Start.Y <= seg.End.Y then [ isLeft ] else []
-                else if wireSeg.End.Y >= seg.Start.Y then
-                    [ isLeft ]
-                else
+                                []
+                | false -> printfn "ALTERNATIVE"
+                           if wireSeg.Start.Y <= seg.Start.Y then
+                            if wireSeg.Start.Y >= seg.End.Y then [ isLeft ] else []
+                           else if wireSeg.End.Y <= seg.Start.Y then
+                                    [ isLeft ]
+                           else
 
-                    []
+                                    []
+                
 
             match position with
             | "Left"
             | "Right" -> List.collect (compareY seg) sndWire
             | "Top"
             | "Bottom" -> List.collect (compareX seg) sndWire
-
+        
         let lst = List.collect (compareSegments sndWireAseg) fstWireAseg |> List.distinct
 
         if lst.Length <> 1 then
@@ -163,7 +184,7 @@ let reOrderPorts
     let swapInterconnectedPorts (model: SymbolT.Model) (symbol: Symbol) (fstWire, sndWire) =
         let position = getSymbolPos symbolToOrder otherSymbol
 
-        match isInterconnected' (fstWire, sndWire) position with
+        match isInterconnected' position (fstWire, sndWire) with
         | false ->
             printfn $"not intersecting"
             symbol
@@ -198,9 +219,10 @@ let reOrderPorts
 
 
     let anyInterconnected (wire: Wire List) =
+        let position = getSymbolPos symbolToOrder otherSymbol
         wire
         |> getWirePairs
-        |> List.map SmartHelpers.isInterconnected
+        |> List.map (isInterconnected' position) //SmartHelpers.isInterconnected
         |> List.exists (fun x -> x = true)
 
 
