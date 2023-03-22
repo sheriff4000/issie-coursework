@@ -236,7 +236,7 @@ let getAdjacentConnections
     (model: Model)
     (symbol1: Symbol)
     (symbol2: Symbol)
-    : (Edge*Edge) * Wire list =
+    : ((Edge*Edge) * Wire list) option =
 
     let wires =
         model.Wires
@@ -251,8 +251,10 @@ let getAdjacentConnections
                 false
             )
         |> List.map(fun (_,wire) -> wire)
-
-    ( (getWireEdge wires[0] symbol1), (getWireEdge wires[0] symbol2) ), wires
+    match wires with
+    | hd::_ -> Some ( ((getWireEdge hd symbol1), (getWireEdge hd symbol2)), wires )
+    | _ -> None
+    
     
     // |> List.map(fun (_,wire) ->
     //     ((getWireEdge wire symbol1),(getWireEdge wire symbol2)),wire)
@@ -346,29 +348,32 @@ let portMapping
     : (string*string) list
     =
     let adjacentConnections = getAdjacentConnections wModel symbolToChange otherSymbol
-    let symbolEdge = adjacentConnections |> fst |> fst
 
-    let portsSymbol = portsOnEdge symbolToChange symbolEdge
+    match adjacentConnections with
+    | Some ((symbolEdge,_),wires) ->
+        // let symbolEdge = adjacentConnections |> fst |> fst
 
-    let rec portMap i posList =
-        match posList with
-        | (pos1,pos2)::tl ->
-            if (pos2 > portsSymbol-i)
-            then List.append [pos1,portsSymbol-i] (portMap (i+1) tl)
-            else List.append [pos1,pos2] (portMap i tl)
-        | [] -> []
+        let portsSymbol = portsOnEdge symbolToChange symbolEdge
 
-    adjacentConnections
-    |> snd
-    |> List.map (fun wire ->
-        Option.get (getPortPositionFromTopOrLeft symbolToChange wire),
-        Option.get (getPortPositionFromTopOrLeft otherSymbol wire) )
-    |> List.sortByDescending id
-    |> portMap 0
-    |> List.filter (fun (x,y) -> x <> y)
-    |> List.map (fun (x,y) ->
-        getPortIDFromTopOrLeft symbolToChange symbolEdge x
-        , getPortIDFromTopOrLeft symbolToChange symbolEdge y)
+        let rec portMap i posList =
+            match posList with
+            | (pos1,pos2)::tl ->
+                if (pos2 > portsSymbol-i)
+                then List.append [pos1,portsSymbol-i] (portMap (i+1) tl)
+                else List.append [pos1,pos2] (portMap i tl)
+            | [] -> []
+
+        wires
+        |> List.map (fun wire ->
+            Option.get (getPortPositionFromTopOrLeft symbolToChange wire),
+            Option.get (getPortPositionFromTopOrLeft otherSymbol wire) )
+        |> List.sortByDescending id
+        |> portMap 0
+        |> List.filter (fun (x,y) -> x <> y)
+        |> List.map (fun (x,y) ->
+            getPortIDFromTopOrLeft symbolToChange symbolEdge x
+            , getPortIDFromTopOrLeft symbolToChange symbolEdge y)
+    | None -> []
 
 
 //HLP23: AUTHOR Ewan
