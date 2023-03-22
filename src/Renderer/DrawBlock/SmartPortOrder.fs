@@ -189,8 +189,7 @@ let reOrderPorts
 
         List.fold newSymbol model wirePairs
 
-    let wires: Wire List =
-        SmartHelpers.getConnectedWires symbolToOrder otherSymbol wModel
+    
 
     let anyInterconnected (wire: Wire List) =
         wire
@@ -561,6 +560,9 @@ let reOrderPorts
             Wires = testWireModel.Wires
             Symbol = { sModel with Symbols = Map.add testOtherPorts.Id testOtherPorts sModel.Symbols } }
 
+    let wires: Wire List =
+        SmartHelpers.getConnectedWires symbolToOrder otherSymbol wModel
+
     let wires': Wire List =
         SmartHelpers.getConnectedWires testOtherPorts otherSymbol testWireModel
 
@@ -580,11 +582,14 @@ let reOrderPorts
         changedModel |> SmartHelpers.getConnectedWires reOrderPortEdges otherSymbol
 
     //let finalSymbol' = changeSymbol reOrderPortEdges newWires changedModel 0
-
+    let changeMux = 
+        match anyInterconnected wires with
+        | false -> symbolToOrder
+        | true -> SymbolReplaceHelpers.changeReversedInputs sModel symbolToOrder.Id
     
     let finalSymbol' = 
                     match symbolToOrder.Component.Type with
-                    |Mux2 -> SymbolReplaceHelpers.changeReversedInputs sModel symbolToOrder.Id //.ChangeReversedInputs (Sheet >> dispatch) (ComponentId symbolToOrder.Id)
+                    |Mux2 -> changeMux
                     |_ -> changeSymbol reOrderPortEdges newWires changedModel 0
     let newChangedWires = match symbolToOrder.Component.Type with
                     |Mux2 -> updateWires finalSymbol' wModel symbolToOrder
