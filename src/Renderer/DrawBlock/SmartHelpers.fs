@@ -441,9 +441,11 @@ let isInterconnected (fstWire,sndWire)=
         if lst.Length <> 1
         then 
             //is interconnected
+            //printfn $"INTERCONNECTED"
             true
         else 
             //not interconnected
+            //printfn $"NOT INTERCONNECTED"
             false
 
  /// HLP23: Sherif
