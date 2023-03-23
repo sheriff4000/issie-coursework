@@ -53,71 +53,70 @@ let resizeAndShift
     (otherSymbol: Symbol)
     (sizeHelpers: sizeHelpers)
     =
-    let firstEdges = fst connections
-    let firstWire =
-        connections
-        |> snd
-        |> List.item 0
+    match connections with
+    | firstEdges,wires when wires.Length > 0 ->
+        let firstWire = wires[0]
 
-    let stackedVertically = (fst firstEdges) = Top || (fst firstEdges) = Bottom
-    
-    let portDistanceSymbol = getPortDistances symbolToSize (fst firstEdges)
-    let portDistanceOther = getPortDistances otherSymbol (snd firstEdges)
+        let stackedVertically = (fst firstEdges) = Top || (fst firstEdges) = Bottom
+        
+        let portDistanceSymbol = getPortDistances symbolToSize (fst firstEdges)
+        let portDistanceOther = getPortDistances otherSymbol (snd firstEdges)
 
-    let hScale = (1.0, symbolToSize.HScale) ||> Option.defaultValue 
-    let vScale = (1.0, symbolToSize.VScale) ||> Option.defaultValue 
+        let hScale = (1.0, symbolToSize.HScale) ||> Option.defaultValue 
+        let vScale = (1.0, symbolToSize.VScale) ||> Option.defaultValue 
 
-    let scalingH = if stackedVertically then Some ((portDistanceOther / portDistanceSymbol) * hScale) else None
-    let scalingV = if not stackedVertically then Some ((portDistanceOther / portDistanceSymbol) * vScale) else None
+        let scalingH = if stackedVertically then Some ((portDistanceOther / portDistanceSymbol) * hScale) else None
+        let scalingV = if not stackedVertically then Some ((portDistanceOther / portDistanceSymbol) * vScale) else None
 
-    let verticalNum = if stackedVertically then 1.0 else 0.0
-    let horizontalNum = if not stackedVertically then 1.0 else 0.0
+        let verticalNum = if stackedVertically then 1.0 else 0.0
+        let horizontalNum = if not stackedVertically then 1.0 else 0.0
 
-    let symbolFirstPortPos = getPortXYPos firstWire symbolToSize portDistanceOther
-    let otherFirstPortPos = getPortXYPos firstWire otherSymbol portDistanceOther
+        let symbolFirstPortPos = getPortXYPos firstWire symbolToSize portDistanceOther
+        let otherFirstPortPos = getPortXYPos firstWire otherSymbol portDistanceOther
 
-    let shift =
-        if stackedVertically
-        then otherFirstPortPos.X - symbolFirstPortPos.X
-        else otherFirstPortPos.Y - symbolFirstPortPos.Y
+        let shift =
+            if stackedVertically
+            then otherFirstPortPos.X - symbolFirstPortPos.X
+            else otherFirstPortPos.Y - symbolFirstPortPos.Y
 
-    let symbol' = 
+        let symbol' = 
+            {
+                symbolToSize with 
+                    HScale = scalingH
+                    VScale = scalingV
+                    Pos = 
+                        {
+                            symbolToSize.Pos with 
+                                X = symbolToSize.Pos.X + shift*verticalNum
+                                Y = symbolToSize.Pos.Y + shift*horizontalNum
+                        }
+                    LabelBoundingBox =
+                        {
+                            symbolToSize.LabelBoundingBox with 
+                                TopLeft =
+                                    {
+                                        symbolToSize.LabelBoundingBox.TopLeft with 
+                                            X = symbolToSize.LabelBoundingBox.TopLeft.X + shift*verticalNum
+                                            Y = symbolToSize.LabelBoundingBox.TopLeft.Y + shift*horizontalNum
+                                    }
+                        }
+            }
+
+        let sModel = wModel.Symbol
+
+        let wireModel =
+            ({
+                    wModel with 
+                        Symbol = {sModel with Symbols = Map.add symbol'.Id symbol' sModel.Symbols}
+            }, symbolToSize.Id)
+            ||> sizeHelpers.UpdateSymbolWiresHelper       
+
         {
-            symbolToSize with 
-                HScale = scalingH
-                VScale = scalingV
-                Pos = 
-                    {
-                        symbolToSize.Pos with 
-                            X = symbolToSize.Pos.X + shift*verticalNum
-                            Y = symbolToSize.Pos.Y + shift*horizontalNum
-                    }
-                LabelBoundingBox =
-                    {
-                        symbolToSize.LabelBoundingBox with 
-                            TopLeft =
-                                {
-                                    symbolToSize.LabelBoundingBox.TopLeft with 
-                                        X = symbolToSize.LabelBoundingBox.TopLeft.X + shift*verticalNum
-                                        Y = symbolToSize.LabelBoundingBox.TopLeft.Y + shift*horizontalNum
-                                }
-                    }
+            wModel with 
+                Wires = wireModel.Wires
+                Symbol = {sModel with Symbols = Map.add symbol'.Id symbol' sModel.Symbols}
         }
-
-    let sModel = wModel.Symbol
-
-    let wireModel =
-        ({
-                wModel with 
-                    Symbol = {sModel with Symbols = Map.add symbol'.Id symbol' sModel.Symbols}
-        }, symbolToSize.Id)
-        ||> sizeHelpers.UpdateSymbolWiresHelper       
-
-    {
-        wModel with 
-            Wires = wireModel.Wires
-            Symbol = {sModel with Symbols = Map.add symbol'.Id symbol' sModel.Symbols}
-    }
+    | _ -> wModel
 
 // HLP23: Luke
 // This function is the main function for SmartSizeSymbol.
