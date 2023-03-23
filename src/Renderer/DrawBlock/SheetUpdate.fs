@@ -771,6 +771,20 @@ let update (msg : Msg) (model : Model): Model*Cmd<Msg> =
             | None -> 
                 printfn "Error: can't validate the two symbols selected to reorder ports"
                 model, Cmd.none
+    
+    // HLP23: Luke
+    | TestAll ->
+        validateTwoSelectedSymbols model
+         |> function
+            | Some (s1,s2) ->
+                let portModel = {model with Wire = SmartPortOrder.reOrderPorts model.Wire s1 s2 helpers}
+
+                let s1_2,s2_2 = Option.get (validateTwoSelectedSymbols portModel)
+                {model with Wire = SmartSizeSymbol.reSizeSymbol portModel.Wire s1_2 s2_2 sizeHelpers}, Cmd.none
+                // portModel, Cmd.none
+            | None -> 
+                printfn "Error: can't validate the two symbols selected to reorder ports"
+                model, Cmd.none
 
     | TestSmartChannel ->
         let bBoxes = model.BoundingBoxes
