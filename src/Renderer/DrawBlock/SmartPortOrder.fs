@@ -578,7 +578,8 @@ let reOrderPorts
 
     let newChangedWires =
         match symbolToOrder.Component.Type with
-        | Mux2 -> updateWires finalSymbol' wModel symbolToOrder
+        | And | Or | Xor | Nand | Nor | Xnor 
+        | Mux2 | Demux2 -> updateWires finalSymbol' wModel symbolToOrder
         | _ -> updateWires finalSymbol' changedModel symbolToOrder
 
     { wModel with
