@@ -145,11 +145,5 @@ let reSizeSymbol
         | Some ((x,_),_) when (x = Left || x = Right) && not deadZoneH ->
             resizeAndShift wModel (Option.get adjacentConnections) symbolToSize otherSymbol sizeHelpers
         | _ -> wModel
-
-        // match symbolEdge with
-        // | x when (x = Top || x = Bottom) && not deadZoneV ->
-        //     resizeAndShift wModel adjacentConnections symbolToSize otherSymbol sizeHelpers
-        // | x when (x = Left || x = Right) && not deadZoneH ->
-        //     resizeAndShift wModel adjacentConnections symbolToSize otherSymbol sizeHelpers
-        // | _ -> wModel
+        
     | _, _ ->  wModel
