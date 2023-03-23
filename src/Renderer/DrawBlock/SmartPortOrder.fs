@@ -50,7 +50,6 @@ let reOrderPorts
     : BusWireT.Model =
     printfn $"ReorderPorts: ToOrder:{symbolToOrder.Component.Label}, Other:{otherSymbol.Component.Label}"
     let sModel = wModel.Symbol
-    printfn $"PORT LIST {sModel.Symbols[symbolToOrder.Id].PortMaps}"
 
     ///updates the wire model to new wire positions based on port positioning
     ///returns wire model (type BusWireT.Model)
@@ -75,8 +74,8 @@ let reOrderPorts
         let newPos' = newPos + buffer
         let port2NewPos = oldPos + buffer
 
-        let changedSymbol = SymbolUpdatePortHelpers.updatePortPos symbol newPos' port1.Id 
-        SymbolUpdatePortHelpers.updatePortPos changedSymbol port2NewPos port2.Id 
+        let changedSymbol = SymbolUpdatePortHelpers.updatePortPos symbol newPos' port1.Id
+        SymbolUpdatePortHelpers.updatePortPos changedSymbol port2NewPos port2.Id
 
     //given two ports on a symbol, moves the first port to the second ports position
     //returns symbol with changed port positioning
@@ -92,8 +91,8 @@ let reOrderPorts
               Y = scaledSign newPos.Y oldPos.Y }
 
         let newPos' = newPos + buffer
-        SymbolUpdatePortHelpers.updatePortPos symbol newPos' port1.Id 
-        
+        SymbolUpdatePortHelpers.updatePortPos symbol newPos' port1.Id
+
 
     //input = list of wires
     //output = list of all wire combinations as tuples
@@ -116,23 +115,18 @@ let reOrderPorts
         let yDifference = symbol1.Pos.Y - symbol2.Pos.Y
 
         if (abs xDifference) < (abs yDifference) then
-            printfn "Vertical"
-
             if yDifference > 0 then
                 //symbol1 is above symbol 2
                 Above
             else
                 //symbol1 is below symbol 2
                 Below
+        else if xDifference > 0 then
+            //symbol1 is to the left of symbol1
+            OnLeft
         else
-            printfn "Horizontal"
-
-            if xDifference > 0 then
-                //symbol1 is to the left of symbol1
-                OnLeft
-            else
-                //symbol1 is to the right of symbol2
-                OnRight
+            //symbol1 is to the right of symbol2
+            OnRight
 
     ///input = a tuple of 2 wires, and the position of one symbol wrt the other
     ///output = boolean, which returns true if the wires are connected
@@ -167,8 +161,6 @@ let reOrderPorts
 
                 match seg.Start.Y < seg.End.Y with
                 | true ->
-                    printfn $"CHECKPOINT" //DEBUGGING REQUIRED
-
                     if wireSeg.Start.Y >= seg.Start.Y then
                         if wireSeg.Start.Y <= seg.End.Y then [ isLeft ] else []
                     else if wireSeg.End.Y >= seg.Start.Y then
@@ -303,6 +295,7 @@ let reOrderPorts
 
         ///change to remove listDifference
 
+        ///changes all unconnected ports
         let ports symbol edge =
             let portsList =
                 List.map (SmartHelpers.getPortFromWire model symbolToChange) getSingleConnectedWires
@@ -323,8 +316,9 @@ let reOrderPorts
                     SmartHelpers.combineLists portsList portListEdge
                     |> List.map (fun (x: string) -> model.Ports[x])
 
-                let test2 symbol (port: Port) =
-                    /// Returns a list of the wires in the model connected to a list of components given by compIds
+                let changeUnconnectedPos symbol (port: Port) =
+
+                    /// given a symbol and a port returns the first corresponding wire
                     let wire =
                         let containsPorts (wire: Wire) =
                             if (Symbol.getInputPortIdStr wire.InputPort) <> port.Id then
@@ -332,14 +326,13 @@ let reOrderPorts
                             else
                                 true
 
-
-                        let test =
+                        let getWire =
                             wireModel.Wires
                             |> Map.toList
                             |> List.map (fun (x, y) -> y)
                             |> List.filter containsPorts
 
-                        test[0]
+                        getWire[0]
 
                     let changePortPos XorY isGreater =
                         let getPositionXY (symbol: Symbol) =
@@ -375,7 +368,7 @@ let reOrderPorts
                         | Right -> changePortPos "Y" true
                         | _ -> symbol
 
-                List.fold test2 symbol portListSingleConnected
+                List.fold changeUnconnectedPos symbol portListSingleConnected
             else
                 symbol
 
@@ -426,7 +419,7 @@ let reOrderPorts
 
         let edge = otherSymbol.PortMaps.Orientation[port2.Id]
         changeEdge edge position
-    
+
     ///given a symbol and a wire list checks whether the port index order is aligned
     ///with the corresponding wire's symbol port index order
     ///returns false if the index order is correct and there are no intersections
@@ -457,12 +450,14 @@ let reOrderPorts
                 if x <> z then true
                 else if direction then true
                 else false
-        let checkIndex (isSame:bool)= 
-             match position with
+
+        let checkIndex (isSame: bool) =
+            match position with
             | OnLeft -> checkBothEdges isSame Left
             | OnRight -> checkBothEdges isSame Right
             | Above -> checkBothEdges isSame Top
             | Below -> checkBothEdges isSame Bottom
+
         let checkSameEdgeIndex = checkIndex true
         let checkDifEdgeIndex = checkIndex false
 
@@ -470,28 +465,31 @@ let reOrderPorts
         let lstDif = List.filter checkDifEdgeIndex firstSymbolList
 
         let checkSame =
-            let portLst = lstSame
-                        |> List.sortBy (fun ((x, y: int option), (z, a)) -> y)
-                        |> List.unzip
-                        |> fun (x, y) -> y
+            let portLst =
+                lstSame
+                |> List.sortBy (fun ((x, y: int option), (z, a)) -> y)
+                |> List.unzip
+                |> fun (x, y) -> y
+
             (List.sortByDescending (fun (x, y: int option) -> y)) portLst <> portLst
 
         let checkDifferent =
-            let portLst = lstDif
-                        |> List.sortBy (fun ((x, y: int option), (z, a)) -> y)
-                        |> List.unzip
-                        |> fun (x, y) -> y
-            (List.sortBy (fun (x, y: int option) -> y) portLst) <> portLst
+            let portLst =
+                lstDif
+                |> List.sortBy (fun ((x, y: int option), (z, a)) -> y)
+                |> List.unzip
+                |> fun (x, y) -> y
 
-        printfn ($" different {checkDifferent}")
-        printfn ($"same {checkSame}")
+            (List.sortBy (fun (x, y: int option) -> y) portLst) <> portLst
 
         if checkDifferent = false && checkSame = false then
             false
         else
             true
 
-
+    ///recursive function that implements port reordering by checking if there are
+    ///intersecting functions and if the port order is correct
+    ///returns the final changed symbol
     let rec changeSymbol (symbol': Symbol) (wires: Wire List) (model: Model) (n: int) =
         if n > Constants.recursionLimit then
             symbol'
@@ -506,10 +504,9 @@ let reOrderPorts
                     let newWires = newWireModel |> SmartHelpers.getConnectedWires newSymbol otherSymbol
                     changeSymbol newSymbol newWires newWireModel (n + 1)
             | false ->
-                printfn $"NO INTERCONNECTED WIRES"
                 symbol'
 
-    let testOtherPorts = symbolToOrder // reorderUnconnectedWires otherSymbol symbolToOrder sModel wModel
+    let testOtherPorts = symbolToOrder
     let testWireModel = updateWires testOtherPorts wModel symbolToOrder
 
     let changedTestModel =
@@ -536,12 +533,16 @@ let reOrderPorts
     let newWires =
         changedModel |> SmartHelpers.getConnectedWires reOrderPortEdges otherSymbol
 
-
+    ///reverses the inputs for symbolToOrder if there are any interconnecting wires
+    ///returns the changed symbol
     let changeMux =
         match anyInterconnected wires with
         | false -> symbolToOrder
         | true -> SymbolReplaceHelpers.changeReversedInputs sModel symbolToOrder.Id
 
+    ///uses port mapping helping function to swap specified ports to ensure wires
+    ///are straight (to use with SmartResizing)
+    ///returns final changed symbol
     let testPortMapping (symbolToChange: Symbol) =
         let portMapList = SmartHelpers.portMapping changedModel symbolToChange otherSymbol
 
@@ -555,6 +556,8 @@ let reOrderPorts
         | 0 -> symbolToChange
         | _ -> List.fold getSwappedSymbol symbolToChange portMapList
 
+    ///implements symbolToOrder port reordering based on custom vs non-custom component
+    ///returns symbol
     let finalSymbol' =
         match symbolToOrder.Component.Type with
         | And
