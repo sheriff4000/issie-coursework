@@ -70,7 +70,7 @@ let reOrderPorts
         let oldPos = symbol.Pos + (getPortPos symbol port1)
 
         let newPos' = newPos + (buffer newPos oldPos)
-        let port2NewPos = oldPos + (buffer oldPos newPos)
+        let port2NewPos = oldPos + (buffer newPos oldPos)
 
         let changedSymbol = SymbolUpdatePortHelpers.updatePortPos symbol newPos' port1.Id
         SymbolUpdatePortHelpers.updatePortPos changedSymbol port2NewPos port2.Id
