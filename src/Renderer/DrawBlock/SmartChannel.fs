@@ -312,4 +312,4 @@ let smartChannelRoute //spaces wires evenly
     // let currentHeights = YCoordinateEachSegment wire
     // print "here"
     // let newWire = moveSegment2 currentHeights[endSegment] (currentHeights[endSegment] - 50.0) wire endSegment
-    // {model with Wires = Map.add wireId newWire model.Wires} 
+    // {model with Wires = Map.add wireId newWire model.Wires}

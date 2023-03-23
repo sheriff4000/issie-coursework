@@ -726,8 +726,7 @@ let update (msg : Msg) (model : Model): Model*Cmd<Msg> =
         { model with
             DebugData = List.insertAt part data (List.removeAt part model.DebugData)
         }, Cmd.none
-    | DebugUpdateMapping mappings -
-    >
+    | DebugUpdateMapping mappings ->
         {model with DebugMappings = mappings }, Cmd.none
     | DebugContinue ->
         //fs.writeFileSync ("/dev/ttyUSB1", "C")
