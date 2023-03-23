@@ -59,7 +59,7 @@ let reOrderPorts
             ({ model with Symbol = { model.Symbol with Symbols = Map.add symbol.Id symbol model.Symbol.Symbols } })
             originalSymbol.Id)
 
-    ///given two ports on a symbol, moves the first port to the second ports position
+    ///given two ports on a symbol, swaps the ports position
     //returns symbol with changed port positioning
     let swapPorts (symbol: Symbol) (port1: Port) (port2: Port) =
         let newPos = symbol.Pos + (getPortPos symbol port2)
@@ -73,8 +73,27 @@ let reOrderPorts
               Y = scaledSign newPos.Y oldPos.Y }
 
         let newPos' = newPos + buffer
+        let port2NewPos = oldPos + buffer
 
-        SymbolUpdatePortHelpers.updatePortPos symbol newPos' port1.Id
+        let changedSymbol = SymbolUpdatePortHelpers.updatePortPos symbol newPos' port1.Id 
+        SymbolUpdatePortHelpers.updatePortPos changedSymbol port2NewPos port2.Id 
+
+    //given two ports on a symbol, moves the first port to the second ports position
+    //returns symbol with changed port positioning
+    let changePorts (symbol: Symbol) (port1: Port) (port2: Port) =
+        let newPos = symbol.Pos + (getPortPos symbol port2)
+        let oldPos = symbol.Pos + (getPortPos symbol port1)
+
+        let scaledSign (newX: float) (oldX: float) =
+            Symbol.Constants.halfPortSep * float (System.Math.Sign(newX - oldX)) //potentially scale this
+
+        let buffer =
+            { X = scaledSign newPos.X oldPos.X
+              Y = scaledSign newPos.Y oldPos.Y }
+
+        let newPos' = newPos + buffer
+        SymbolUpdatePortHelpers.updatePortPos symbol newPos' port1.Id 
+        
 
     //input = list of wires
     //output = list of all wire combinations as tuples
@@ -337,9 +356,9 @@ let reOrderPorts
                             | false -> position1 < position2
 
                         if compare then
-                            swapPorts symbol port (Symbol.getPort model portListEdge[0])
+                            changePorts symbol port (Symbol.getPort model portListEdge[0])
                         else
-                            swapPorts symbol port (Symbol.getPort model (List.last portListEdge))
+                            changePorts symbol port (Symbol.getPort model (List.last portListEdge))
 
 
                     match (getSymbolPos symbolToChange otherSymbol) with
