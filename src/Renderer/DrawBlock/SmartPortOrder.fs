@@ -362,16 +362,15 @@ let reOrderPorts
 
         let allEdges = [ Top; Bottom; Left; Right ]
         List.fold ports symbolToChange allEdges
-
+    
+    ///given two symbols connected by a wire, changes the edge of the port based on the
+    ///relative symbol position to make the sheet appear more clean and simple
+    ///returns the changed symbol
     let comparePortEdge'' (otherSymbol: Symbol) (model: SymbolT.Model) (symbolToChange: Symbol) (wire: Wire) =
-        let getPorts =
-            List.map (fun (x: Port) -> string x.Id) (connectedPorts symbolToChange otherSymbol model wModel)
-
         let port1 = SmartHelpers.getPortFromWire model symbolToChange wire
         let port2 = SmartHelpers.getPortFromWire model otherSymbol wire
         let portEdge = symbolToChange.PortMaps.Orientation[port1.Id]
         let position = getSymbolPos symbolToChange otherSymbol
-
 
         let changeEdge (edge: Edge) (position: SymbolPosition) =
             let checkToChangeEdge (edge:Edge)=
@@ -406,8 +405,6 @@ let reOrderPorts
                 | Right -> checkToChangeEdge Right
 
         let edge = otherSymbol.PortMaps.Orientation[port2.Id]
-
-        printf ($"Position: {position}")
         changeEdge edge position
 
     let checkPortPositions (wire: Wire List) (symbol1: Symbol) (model: DrawModelType.SymbolT.Model) =
@@ -415,11 +412,18 @@ let reOrderPorts
             wire
             |> List.map (anyCrossingPorts symbol1 otherSymbol model) //separate into 4 based on otherSymbol
             |> List.sort //make multiple lists for top bottom left right?
-
-        let funTest ((x: Edge, y), (z: Edge, a)) = x = z
-        let funTest2 ((x: Edge, y), (z: Edge, a)) = x <> z
         let position = getSymbolPos symbol1 otherSymbol
+        let checkBothEdges (edge:Edge) ((x: Edge, y), (z: Edge, a)) =
 
+            let direction = 
+                match edge with
+                |Left
+                |Right -> x = Left || x = Right
+                |Top
+                |Bottom -> x = Top || x = Bottom
+            if x<> z 
+            then false
+            else if direction then false else true
         let checkTopFun position =
             match position with
             | OnLeft ->
@@ -466,48 +470,26 @@ let reOrderPorts
                     else if x = Top || x = Bottom then true
                     else false)
 
-        let lstTop = List.filter funTest firstSymbolList
-        let lstTop2 = List.filter funTest2 firstSymbolList
         let lstTop' = List.filter (checkTopFun position) firstSymbolList
         let lstTop2' = List.filter (checkTopFun2 position) firstSymbolList
 
         let checkTop =
-            printf ($"list 1 {lstTop'}")
-
             lstTop'
             |> List.sortBy (fun ((x, y: int option), (z, a)) -> y)
             |> List.unzip
             |> fun (x, y) -> y
 
         let checkTop2 =
-            printf ($"list 2 {lstTop2'}")
-
             lstTop2'
             |> List.sortBy (fun ((x, y: int option), (z, a)) -> y)
             |> List.unzip
             |> fun (x, y) -> y
 
         let checkSame =
-            if (List.sortByDescending (fun (x, y: int option) -> y)) checkTop = checkTop then
-                false
-            else
-                true
+            (List.sortByDescending (fun (x, y: int option) -> y)) checkTop <> checkTop
 
         let checkDifferent =
-            if (List.sortBy (fun (x, y: int option) -> y) checkTop2) = checkTop2 then
-                false
-            else
-                true
-
-        let secondSymbolList =
-            wire
-            |> List.map (anyCrossingPorts symbol1 otherSymbol model) //separate into 4 based on otherSymbol
-            |> List.sort //make multiple lists for top bottom left right?
-            |> List.unzip
-            |> (fun (x, y) -> y)
-        //the port ordering is dependent on edge index:
-        //if they have the same edge then list.sort
-        //if they have different ports then list.sort descending
+            (List.sortBy (fun (x, y: int option) -> y) checkTop2) <> checkTop2
 
         printfn ($" different {checkDifferent}")
         printfn ($"same {checkSame}")
@@ -583,7 +565,8 @@ let reOrderPorts
 
     let finalSymbol' =
         match symbolToOrder.Component.Type with
-        | Mux2 -> changeMux
+        | And | Or | Xor | Nand | Nor | Xnor 
+        | Mux2 | Demux2 -> changeMux
         | _ ->
             let newSymbol =
                 changeSymbol reOrderPortEdges newWires changedModel 0 |> testPortMapping //sometimes has errors so need something to check if not adjacent
