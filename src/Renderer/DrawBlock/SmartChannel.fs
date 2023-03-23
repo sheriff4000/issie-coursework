@@ -151,7 +151,7 @@ let getInOutSegments (channelOrientation: Orientation) (channel: BoundingBox) (w
         let finalIn = 
             if Option.isSome tmpIn then
                 tmpIn
-            elif (Option.isSome tmpOut) & Option.isNone(tmpIn) then
+            elif (Option.isSome tmpOut) && Option.isNone(tmpIn) then
                 match (wire.InitialOrientation, channelOrientation) with
                     | (Horizontal, Horizontal) -> Some 2
                     | (Horizontal, Vertical) -> Some 1
@@ -164,7 +164,7 @@ let getInOutSegments (channelOrientation: Orientation) (channel: BoundingBox) (w
         let finalOut = 
             if Option.isSome tmpOut then
                 tmpOut
-            elif (Option.isSome tmpIn) & Option.isNone(tmpOut) then
+            elif (Option.isSome tmpIn) && Option.isNone(tmpOut) then
                 let endOrientation = 
                     let numberOfSegments = (List.length wire.Segments) % 2
                     match (channelOrientation, numberOfSegments) with
