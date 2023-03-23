@@ -1,4 +1,4 @@
-module SmartChannel
+﻿module SmartChannel
 
 open CommonTypes
 open Elmish
@@ -145,11 +145,47 @@ let getInOutSegments (channelOrientation: Orientation) (channel: BoundingBox) (w
                         botSeg tl
                 | [] -> None 
 
-        let finalIn = if channelOrientation = Horizontal then leftSeg intersectList else topSeg intersectList
-        let finalOut = if channelOrientation = Horizontal then rightSeg intersectList else botSeg intersectList
+        let tmpIn = if channelOrientation = Horizontal then leftSeg intersectList else topSeg intersectList
+        let tmpOut = if channelOrientation = Horizontal then rightSeg intersectList else botSeg intersectList
+
+        let finalIn = 
+            if Option.isSome tmpIn then
+                tmpIn
+            elif (Option.isSome tmpOut) && Option.isNone(tmpIn) then
+                match (wire.InitialOrientation, channelOrientation) with
+                    | (Horizontal, Horizontal) -> Some 2
+                    | (Horizontal, Vertical) -> Some 1
+                    | (Vertical, Horizontal) -> Some 1
+                    | (Vertical, Vertical)  -> Some 2
+                    | _ -> failwithf "shouldn't ever happen"
+            else
+                None
+
+        let finalOut = 
+            if Option.isSome tmpOut then
+                tmpOut
+            elif (Option.isSome tmpIn) && Option.isNone(tmpOut) then
+                let endOrientation = 
+                    let numberOfSegments = (List.length wire.Segments) % 2
+                    match (channelOrientation, numberOfSegments) with
+                        | (Horizontal, 0) -> Vertical
+                        | (Vertical, 0) -> Horizontal
+                        | (Horizontal, 1) -> Horizontal
+                        | (Vertical, 1) -> Vertical
+                        | _ -> failwithf "shouldn't ever happen"
+
+                        
+                match (endOrientation, channelOrientation) with
+                    | (Horizontal, Horizontal) -> Some ((List.length wire.Segments) - 3)
+                    | (Horizontal, Vertical) -> Some ((List.length wire.Segments) - 2)
+                    | (Vertical, Horizontal) -> Some ((List.length wire.Segments) - 2)
+                    | (Vertical, Vertical)  -> Some ((List.length wire.Segments) - 3)
+                    | _ -> failwithf "shouldn't ever happen"
+            else
+                None
 
 
-        finalIn, finalOut
+        tmpIn, tmpOut
 
 let getWiresInChannel (channelOrientation: Orientation)(channel: BoundingBox) (model: Model)  = 
     model.Wires
@@ -256,6 +292,8 @@ let smartChannelRoute //spaces wires evenly
             :Model =
 
     let wiresInChannel: WireMovementInfo list = getWiresInChannel channelOrientation channel model
+    print "number of wires in channel"
+    print (List.length wiresInChannel)
     let spacings = getWireSpacings channelOrientation channel wiresInChannel
     let sortedWires = getWireOrder channelOrientation model wiresInChannel
 
@@ -274,4 +312,4 @@ let smartChannelRoute //spaces wires evenly
     // let currentHeights = YCoordinateEachSegment wire
     // print "here"
     // let newWire = moveSegment2 currentHeights[endSegment] (currentHeights[endSegment] - 50.0) wire endSegment
-    // {model with Wires = Map.add wireId newWire model.Wires} 
+    // {model with Wires = Map.add wireId newWire model.Wires}

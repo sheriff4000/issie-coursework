@@ -254,10 +254,6 @@ let getAdjacentConnections
     match wires with
     | hd::_ -> Some ( ((getWireEdge hd symbol1), (getWireEdge hd symbol2)), wires )
     | _ -> None
-    
-    
-    // |> List.map(fun (_,wire) ->
-    //     ((getWireEdge wire symbol1),(getWireEdge wire symbol2)),wire)
 
 // HLP23: Luke
 // This returns the X and Y posistion of a port.

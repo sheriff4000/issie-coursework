@@ -1,10 +1,33 @@
-Anthony Jones - handled the smart channels task. Wrote code in the smartChannel.fs file, and also added a new function to the sheetUpdateHelpers.fs file. This function is authored with 
-///HLP23: Anthony
+#Implemented Functionality
 
+The following features are implemented:
 
-Sherif Agbabiaka: author written as //HLP23: Sherif.
-contributed to SmartWire.fs and SmartHelpers.fs
+## Autoroute
+* Wires can avoid a component it crosses through, as long as there is room for the wire segment to move.
+* Autorouted segments remain in place until made redundant by moving component.
+* Segments with an adjacent fixed segment cannot be moved
 
-Aleera - handled the Smart Port Positioning task. Wrote code in Smart Port Order file and added new functions to SmartHelpers. Authored as //HLP23: AUTHOR Ewan
+## SmartResize
 
-Luke - Handled the SmartResizeSymbol module and added multiple helper functions to the SmartHelpers module.SmartResizeSymbol currently only works when connecting wires are made up of 7 segments. There was not enough time to extend this to other kinds of wires. authored as // HLP23: Luke
+* Checks if the two selected components are custom components and are aligned adjacently
+* Resized the second symbol selected to match the same port distances along the adjacent edge to the other symbol
+* Moves the second symbol selected so that one of the wires is straight
+* Moves the second symbol selected's label so be in the same position as it previously was in
+* This can be used after SmartPortReorder to have all wires straight as the ports are in the correct order
+
+## TestSmartChannel button
+* When two comnponents are selected, it evenly spaces out the wires that travel between ghe two component
+* When there are not two components selected, it identifies all the channels in the sheet to then space out the wires. It also checks for wires close to components, spacing them out (differentiates wires that have been autorouted similarly around a component)
+* Can channel wires of any complexity
+
+## SmartPortOrder
+
+* Reorders 2 input non-custom components if they have crossing wires: MUX2, DEMUX2, ADD, OR, XOR, NAND, NOR, XNOR
+* Reorders ports and port edge based on relative symbol position of symbolToOrder compared to otherSymbol
+* Reorders ports with wires connected to additional symbols not selected, based on the additional symbol's poition
+* Reorders ports for vertical and horizontal channels, including mixed inputs and outputs with most port arrangements
+* Reorders adjacent connections so that ports are opposite for smart resizing
+
+## TestAll button
+* Implements SmartPortReorder, SmartResize and SmartChannel all at once
+* It will lead to two selected symbols having straight connected wires with ports aligned and any wires going off to other symbols will be spaced evenly within the channel between the two symbols
