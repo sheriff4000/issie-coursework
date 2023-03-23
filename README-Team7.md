@@ -1,4 +1,4 @@
-#Implemented Functionality
+# Implemented Functionality
 
 The following features are implemented:
 
@@ -30,4 +30,4 @@ The following features are implemented:
 
 ## TestAll button
 * Implements SmartPortReorder, SmartResize and SmartChannel all at once
-* It will lead to two selected symbols having straight connected wires with ports aligned and any wires going off to other symbols will be spaced evenly within the channel between the two symbols
+* It will lead to two selected symbols having straight connected wires with ports aligned and any wires in between the symbols will be spaced evenly
