@@ -781,7 +781,7 @@ let update (msg : Msg) (model : Model): Model*Cmd<Msg> =
                 let portModel = {model with Wire = SmartPortOrder.reOrderPorts model.Wire s1 s2 helpers}
                 let s1_2,s2_2 = Option.get (validateTwoSelectedSymbols portModel)
 
-                let resizeModel = {model with Wire = SmartSizeSymbol.reSizeSymbol portModel.Wire s1_2 s2_2 sizeHelpers}, Cmd.none
+                let resizeModel = {model with Wire = SmartSizeSymbol.reSizeSymbol portModel.Wire s1_2 s2_2 sizeHelpers}
                 let s1_3,s2_3 = Option.get (validateTwoSelectedSymbols resizeModel)
 
                 let channelmodel =
@@ -797,7 +797,7 @@ let update (msg : Msg) (model : Model): Model*Cmd<Msg> =
                                 {resizeModel with Wire = (SmartChannel.smartChannelRoute Horizontal channel  resizeModel.Wire)} 
                     | Some channel ->
                         {resizeModel with Wire = (SmartChannel.smartChannelRoute Vertical channel resizeModel.Wire)}
-                channeleModel, Cmd.none
+                channelmodel, Cmd.none
                 // portModel, Cmd.none
             | None -> 
                 printfn "Error: can't validate the two symbols selected to reorder ports"
