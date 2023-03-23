@@ -774,13 +774,30 @@ let update (msg : Msg) (model : Model): Model*Cmd<Msg> =
     
     // HLP23: Luke
     | TestAll ->
+        let bBoxes = model.BoundingBoxes
         validateTwoSelectedSymbols model
-         |> function
+        |> function
             | Some (s1,s2) ->
                 let portModel = {model with Wire = SmartPortOrder.reOrderPorts model.Wire s1 s2 helpers}
-
                 let s1_2,s2_2 = Option.get (validateTwoSelectedSymbols portModel)
-                {model with Wire = SmartSizeSymbol.reSizeSymbol portModel.Wire s1_2 s2_2 sizeHelpers}, Cmd.none
+
+                let resizeModel = {model with Wire = SmartSizeSymbol.reSizeSymbol portModel.Wire s1_2 s2_2 sizeHelpers}, Cmd.none
+                let s1_3,s2_3 = Option.get (validateTwoSelectedSymbols resizeModel)
+
+                let channelmodel =
+                    getVerticalChannel bBoxes[s1_3.Id] bBoxes[s2_3.Id]
+                    |> function 
+                    | None -> 
+                        getHorizontalChannel bBoxes[s1_3.Id] bBoxes[s2_3.Id]
+                        |> function
+                            | None ->
+                                printfn "no horizontal or vertical channel"
+                                resizeModel 
+                            | Some channel ->
+                                {resizeModel with Wire = (SmartChannel.smartChannelRoute Horizontal channel  resizeModel.Wire)} 
+                    | Some channel ->
+                        {resizeModel with Wire = (SmartChannel.smartChannelRoute Vertical channel resizeModel.Wire)}
+                channeleModel, Cmd.none
                 // portModel, Cmd.none
             | None -> 
                 printfn "Error: can't validate the two symbols selected to reorder ports"
