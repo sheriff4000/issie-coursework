@@ -28,6 +28,7 @@ module Constants =
     let legendVertOffset = 5.
     let legendLineSpacingInPixels = 16.
     let testShowLabelBoundingBoxes = false
+    let halfPortSep = 25.0
 
     /// How large are component labels
     let labelFontSizeInPixels:float = 16 // otehr parameters scale correctly with this
