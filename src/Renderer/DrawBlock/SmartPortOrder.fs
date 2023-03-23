@@ -544,7 +544,7 @@ let reOrderPorts
     let newWires =
         changedModel |> SmartHelpers.getConnectedWires reOrderPortEdges otherSymbol
 
-    //let finalSymbol' = changeSymbol reOrderPortEdges newWires changedModel 0
+
     let changeMux =
         match anyInterconnected wires with
         | false -> symbolToOrder
@@ -569,7 +569,7 @@ let reOrderPorts
         | Mux2 | Demux2 -> changeMux
         | _ ->
             let newSymbol =
-                changeSymbol reOrderPortEdges newWires changedModel 0 |> testPortMapping //sometimes has errors so need something to check if not adjacent
+                changeSymbol reOrderPortEdges newWires changedModel 0 |> testPortMapping
 
             let newWireModel = updateWires newSymbol changedModel symbolToOrder
 
