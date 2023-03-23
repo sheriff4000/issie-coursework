@@ -411,43 +411,113 @@ let getSymbolFromWire (model: SymbolT.Model) (symbol:Symbol) (wire:Wire) =
         Symbol.getSymbol model (Symbol.getInputPortIdStr (wire.InputPort))
     else
         Symbol.getSymbol model (Symbol.getOutputPortIdStr (wire.OutputPort))
-        
-
+ 
+ //HLP23: AUTHOR Ewan
+type SymbolPosition =
+    | OnLeft
+    | OnRight
+    | Above
+    | Below
 
 //HLP23: AUTHOR Ewan
-//Returns true if two wires are intersecting each other and false if they are not
-let isInterconnected (fstWire,sndWire)=
+///input = a tuple of 2 wires, and the position of one symbol wrt the other
+///output = boolean, which returns true if the wires are connected
+///and false if they are not
+let isInterconnected (position: SymbolPosition) (fstWire, sndWire) =
         let fstWireAseg = BusWire.getAbsSegments fstWire
         let sndWireAseg = BusWire.getAbsSegments sndWire
-        let compareSegments (sndWire: ASegment list) (seg:ASegment) =
-            let compareY (seg:ASegment) (wireSeg:ASegment)=
-                let isTaller = wireSeg.Start.Y > seg.Start.Y
-                if wireSeg.Start.X >= seg.Start.X
-                then 
-                    if wireSeg.Start.X <= seg.End.X
-                    then 
-                        [isTaller]
-                    else 
-                        []
-                else 
-                    if wireSeg.End.X >= seg.Start.X
-                    then 
-                        [isTaller]
-                    else 
 
+        let compareSegments (sndWire: ASegment list) (seg: ASegment) =
+            let compareY (seg: ASegment) (wireSeg: ASegment) =
+
+                let isTaller = wireSeg.Start.Y > seg.Start.Y
+
+                match seg.Start.X < seg.End.X with
+                | true ->
+                    if wireSeg.Start.X >= seg.Start.X then
+                        if wireSeg.Start.X <= seg.End.X then [ isTaller ] else []
+                    else if wireSeg.End.X >= seg.Start.X then
+                        [ isTaller ]
+                    else
                         []
-            List.collect (compareY seg) sndWire
-        let lst = List.collect (compareSegments sndWireAseg) fstWireAseg
-                               |> List.distinct                      
-        if lst.Length <> 1
-        then 
+                | false ->
+                    if wireSeg.Start.X <= seg.Start.X then
+                        if wireSeg.Start.X >= seg.End.X then [ isTaller ] else []
+                    else if wireSeg.End.X <= seg.Start.X then
+                        [ isTaller ]
+                    else
+                        []
+
+            let compareX (seg: ASegment) (wireSeg: ASegment) =
+                let isLeft = wireSeg.Start.X > seg.Start.X
+
+                match seg.Start.Y < seg.End.Y with
+                | true ->
+                    if wireSeg.Start.Y >= seg.Start.Y then
+                        if wireSeg.Start.Y <= seg.End.Y then [ isLeft ] else []
+                    else if wireSeg.End.Y >= seg.Start.Y then
+                        [ isLeft ]
+                    else
+                        []
+                | false ->
+                    if wireSeg.Start.Y <= seg.Start.Y then
+                        if wireSeg.Start.Y >= seg.End.Y then [ isLeft ] else []
+                    else if wireSeg.End.Y <= seg.Start.Y then
+                        [ isLeft ]
+                    else
+                        []
+
+
+            match position with
+            | OnLeft
+            | OnRight -> List.collect (compareY seg) sndWire
+            | Above
+            | Below -> List.collect (compareX seg) sndWire
+
+        let lst = List.collect (compareSegments sndWireAseg) fstWireAseg |> List.distinct
+
+        if lst.Length <> 1 then
             //is interconnected
-            //printfn $"INTERCONNECTED"
             true
-        else 
+        else
             //not interconnected
-            //printfn $"NOT INTERCONNECTED"
             false
+
+///HLP23:AUTHOR Ewan
+//returns the relative symbol position of symbol1 compared to symbol2 on the model
+//output type = type SymbolPosition
+let getSymbolPos (symbol1: Symbol) (symbol2: Symbol) : SymbolPosition =
+    let xDifference = symbol1.Pos.X - symbol2.Pos.X
+    let yDifference = symbol1.Pos.Y - symbol2.Pos.Y
+
+    if (abs xDifference) < (abs yDifference) then
+         if yDifference > 0 then
+            //symbol1 is above symbol 2
+            Above
+         else
+            //symbol1 is below symbol 2
+            Below
+    else if xDifference > 0 then
+         //symbol1 is to the left of symbol1
+         OnLeft
+    else
+         //symbol1 is to the right of symbol2
+         OnRight
+
+///HLP23: AUTHOR Ewan
+///input = list of wires
+///output = list of all wire combinations as tuples
+let getWirePairs (wireList: Wire List) =
+    let isNotDuplicate (x, y) = x <> y
+
+    let orderTupleByWireId (x, y) =
+        if x.WId < y.WId then (x, y) else (y, x)
+
+    wireList
+    |> List.allPairs wireList
+    |> List.filter isNotDuplicate
+    |> List.map orderTupleByWireId
+    |> List.distinct
 
  /// HLP23: Sherif
 /// Defines a line segment as two positions
