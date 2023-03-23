@@ -185,7 +185,7 @@ let getInOutSegments (channelOrientation: Orientation) (channel: BoundingBox) (w
                 None
 
 
-        finalIn, finalOut
+        tmpIn, tmpOut
 
 let getWiresInChannel (channelOrientation: Orientation)(channel: BoundingBox) (model: Model)  = 
     model.Wires
