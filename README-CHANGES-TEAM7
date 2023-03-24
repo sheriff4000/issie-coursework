@@ -6,7 +6,7 @@
     * Members Top, Bottom, Left and Right (LineSegs) added to BoundingBox - allows to check whether a wire segment enters a BoundingBox
 
 ## SheetUpdate.fs
-    * TestSmartChannel altered to check for all channels
+    * TestSmartChannel altered do smart channeling for one channel if two components selected, else call smart channeling on the entire sheet.
     * TestAll button added
     
 ## Symbol.fs
@@ -15,5 +15,6 @@
 ## BusWire.fs
    * recursionLimit added to Constants module for use in recursive changeSymbol function in SmartPortOrder
    
-
+## SmartChannel.fs
+    * complete rework of smart channeling, fixing the individual stage design so that smart channeling works in all orientations and with any number of segments.
    
