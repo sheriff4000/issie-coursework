@@ -554,10 +554,13 @@ let reOrderPorts
         let portMapList = SmartHelpers.portMapping changedModel symbolToChange otherSymbol
 
         let getSwappedSymbol (symbol: Symbol) (x: string, y: string) =
+            // HLP23: Luke -> Editted to use function I made
+            
+            // let port1 = getPort changedModel.Symbol x
+            // let port2 = getPort changedModel.Symbol y
+            // swapPorts symbol port1 port2
 
-            let port1 = getPort changedModel.Symbol x
-            let port2 = getPort changedModel.Symbol y
-            swapPorts symbol port1 port2
+            SmartHelpers.swapTwoPortsWithSameEdge symbol x y
 
         match portMapList.Length with
         | 0 -> symbolToChange

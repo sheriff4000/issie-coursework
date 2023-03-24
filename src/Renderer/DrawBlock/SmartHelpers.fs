@@ -371,6 +371,53 @@ let portMapping
             , getPortIDFromTopOrLeft symbolToChange symbolEdge y)
     | None -> []
 
+// HLP23: Luke
+// Replace an element in a list with a different value
+let swapElements
+    (item1: 'a)
+    (item2: 'a)
+    (list: 'a list)
+    : 'a list
+    =
+    list
+    |> List.map (fun x -> 
+        match x with
+        | y when y = item1 -> item2
+        | y when y = item2 -> item1
+        | _ -> x
+    )
+
+// HLP23: Luke
+// Function to return same symbol with two ports swapped. The two ports must be on the same edge.
+let swapTwoPortsWithSameEdge
+    (symbol: Symbol)
+    (portId1: string)
+    (portId2: string)
+    : Symbol
+    =
+
+    let portEdge1 = symbol.PortMaps.Orientation.Item portId1
+    let portEdge2 = symbol.PortMaps.Orientation.Item portId2
+
+    printf "edges %A %A" portEdge1 portEdge2
+
+    let orderList =
+        symbol.PortMaps.Order
+        |> Map.find portEdge1
+        |> swapElements portId1 portId2
+    
+    let newOrder =
+        symbol.PortMaps.Order
+        |> Map.add portEdge1 orderList
+
+    {
+        symbol with
+            PortMaps =  {
+                Orientation = symbol.PortMaps.Orientation; 
+                Order = newOrder
+            }
+    }
+    
 
 //HLP23: AUTHOR Ewan
 //This function returns a list of all the elements in both input lists
