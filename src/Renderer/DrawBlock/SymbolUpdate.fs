@@ -290,7 +290,7 @@ let addSymbol (ldcs: LoadedComponent list) (model: Model) pos compType lbl =
     { model with Symbols = newSymModel; Ports = newPorts }, newSym.Id
 
 
-//---------------------Helper functions for the upadte function------------------------------//
+//---------------------Helper functions for the update function------------------------------//
 
 
 /// Given a model and a list of component ids deletes the specified components from the model and returns the updated model

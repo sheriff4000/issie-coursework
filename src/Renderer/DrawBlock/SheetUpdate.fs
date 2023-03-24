@@ -805,7 +805,7 @@ let update (msg : Msg) (model : Model): Model*Cmd<Msg> =
 
     | TestSmartChannel ->
         let bBoxes = model.BoundingBoxes
-
+        //HLP23: Anthony and Sherif
         /// returns a bool indicating whether a wire has been autorouted around a component
         let checkAutoRouteBoundingBox (channel: BoundingBox) (side: Edge) : bool =
             //returns bool saying if theres multiple wires being autorouted
@@ -959,56 +959,6 @@ let update (msg : Msg) (model : Model): Model*Cmd<Msg> =
 
 
         newModel2, Cmd.none
-
-
-    // | TestSmartChannel ->
-    //     // Test code called from Edit menu item
-    //     // Validate the list of selected symbols: it muts have just two for
-    //     // The test to work.
-    //     let allSymbols (model:Model) = 
-    //         let symbols = model.Wire.Symbol.Symbols
-    //         let symbolPairs = 
-    //             Map.values symbols 
-    //             |> List.ofSeq
-    //             |> List.allPairs
-    //         symbolPairs
-
-    //     let channelFolder (currModel: Model) (currChannel: Symbol * Symbol) =
-    //         match currChannel with
-    //         | (s1,s2) -> 
-    //             let bBoxes = model.BoundingBoxes
-    //             getVerticalChannel bBoxes[s1.Id] bBoxes[s2.Id]
-    //             |> function 
-    //                | None -> 
-    //                     getHorizontalChannel bBoxes[s1.Id] bBoxes[s2.Id]
-    //                     |> function
-    //                         | None ->
-    //                             printfn "no horizontal or vertical channel"
-    //                             model, Cmd.none 
-    //                         | Some channel ->
-    //                             {model with Wire = SmartChannel.smartChannelRoute Horizontal channel model.Wire}, Cmd.none 
-    //                | Some channel ->
-    //                     {model with Wire = SmartChannel.smartChannelRoute Vertical channel model.Wire}, Cmd.none
-
-    //     validateTwoSelectedSymbols model  
-    //     |> function
-    //         | Some (s1,s2) ->
-    //             let bBoxes = model.BoundingBoxes
-    //             getVerticalChannel bBoxes[s1.Id] bBoxes[s2.Id]
-    //             |> function 
-    //                | None -> 
-    //                     getHorizontalChannel bBoxes[s1.Id] bBoxes[s2.Id]
-    //                     |> function
-    //                         | None ->
-    //                             printfn "no horizontal or vertical channel"
-    //                             model, Cmd.none 
-    //                         | Some channel ->
-    //                             {model with Wire = SmartChannel.smartChannelRoute Horizontal channel model.Wire}, Cmd.none 
-    //                | Some channel ->
-    //                     {model with Wire = SmartChannel.smartChannelRoute Vertical channel model.Wire}, Cmd.none
-    //         | None -> 
-    //             printfn "Error: can't validate the two symbols selected to reorder ports"
-    //             model, Cmd.none   
     
 
     | ToggleNet _ | DoNothing | _ -> model, Cmd.none

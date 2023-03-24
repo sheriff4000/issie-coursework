@@ -25,13 +25,6 @@ open SmartWire
 let print x =
     printfn "%A" x
 
-// type BoxSides = { 
-// //defines the left x coordinate, right x coordinate, top y coordinate, bottom y coordinate of a bounding box.
-//         Left: float;
-//         Right: float;
-//         Top: float;
-//         Bottom: float
-//     }
 
 type WireMovementInfo = {
     Wire: ConnectionId;
