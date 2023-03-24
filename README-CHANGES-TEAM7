@@ -10,16 +10,16 @@
     * TestAll button added
     
 ## Symbol.fs
-   * halfPortStep added to Constants module for use in swapPorts function in SmartPortOrder
+    * halfPortStep added to Constants module for use in swapPorts function in SmartPortOrder
 
 ## BusWire.fs
-   * recursionLimit added to Constants module for use in recursive changeSymbol function in SmartPortOrder
+    * recursionLimit added to Constants module for use in recursive changeSymbol function in SmartPortOrder
    
 ## SmartChannel.fs
     * complete rework of smart channeling, fixing the individual stage design so that smart channeling works in all orientations and with any number of segments.
    
 ## Renderer.fs
-   * TestAll item added to Edit submenu
+    * TestAll item added to Edit submenu
 
 ## DrawModelType.fs
-   * TestAll added to type Msg
+    * TestAll added to type Msg
