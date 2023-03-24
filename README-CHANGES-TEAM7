@@ -18,3 +18,8 @@
 ## SmartChannel.fs
     * complete rework of smart channeling, fixing the individual stage design so that smart channeling works in all orientations and with any number of segments.
    
+## Renderer.fs
+   * TestAll item added to Edit submenu
+
+## DrawModelType.fs
+   * TestAll added to type Msg
