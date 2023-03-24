@@ -23,7 +23,7 @@ The following features are implemented:
 ## SmartPortOrder
 
 * Reorders 2 input non-custom components if they have crossing wires: MUX2, DEMUX2, ADD, OR, XOR, NAND, NOR, XNOR
-* Reorders ports and port edge based on relative symbol position of symbolToOrder compared to otherSymbol
+* Reorders ports and port edge based on relative symbol position of symbolToOrder compared to otherSymbol - limitations: some edge changes can cause wire crossing due to end of wire connected to different edges, therefore requiring button to be pressed more than once to remove wire crossing (e.g. if for a symbol (symbolToChange) connected to another symbol (otherSymbol) on its right, there are ports on both Left and Right edge for otherSymbol)
 * Reorders ports with wires connected to additional symbols not selected, based on the additional symbol's poition
 * Reorders ports for vertical and horizontal channels, including mixed inputs and outputs with most port arrangements
 * Reorders adjacent connections so that ports are opposite for smart resizing
