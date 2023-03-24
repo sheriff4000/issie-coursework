@@ -161,7 +161,7 @@ let getWiresInChannel (channelOrientation: Orientation)(channel: BoundingBox) (m
         let seg2 = Option.get outSeg
         (connectionId, ((min seg1 seg2), (max seg1 seg2))))
     |> List.map (fun (connectionId: ConnectionId, (inSeg, outSeg)) -> {Wire = connectionId; StartSegment = (inSeg); EndSegment = (outSeg)})
-
+/// returns a list of wire moves indicating where wires should be moved to
 let getWireOrder (channelOrientation: Orientation) (model: Model) (wires: list<WireMovementInfo>) = 
     let getFinalHeight (wire: Wire) = 
         let folder (initialOrientation: Orientation) (state: float) (index:int) (segment: Segment) = 
@@ -190,7 +190,7 @@ let getWireOrder (channelOrientation: Orientation) (model: Model) (wires: list<W
     | Vertical ->
         wires
         |> List.sortBy (fun wire -> (Map.find wire.Wire model.Wires) |> getFinalLength)
-
+/// determines where each wire in the channel needs to move to
 let getWireSpacings (channelOrientation: Orientation) (channel: BoundingBox) (ids: list<WireMovementInfo>) = 
     //returns an array of what X coordinate each vertical segment should be
     let numberOfWires = float (List.length ids)
@@ -201,7 +201,7 @@ let getWireSpacings (channelOrientation: Orientation) (channel: BoundingBox) (id
     | Vertical ->
         [1.0..numberOfWires] 
         |> List.map (fun x -> channel.TopLeft.X + ((channel.W / (numberOfWires + 1.0 )) * x))
-
+///alternate moveSegment that doesn't flag moves segments as manual
 let moveSegment2 (currentHeight: float) (yCoordinate: float) (wire: Wire) (segmentIndex: int) =
     let moveHorizontalSegment (segments: List<Segment>) (amount: float) = 
         let rightHorizontal: float = segments[segmentIndex+1].Length
@@ -222,7 +222,7 @@ let moveSegment2 (currentHeight: float) (yCoordinate: float) (wire: Wire) (segme
     {wire with Segments = moveHorizontalSegment wire.Segments amount}
 
 
-
+/// moves all segments between startSegment and endSegment to a desired position
 let moveWire (channelOrientation: Orientation) (model: Model) (wireId: ConnectionId) (startSegment: int) (endSegment: int) (coordinateTarget: float): Wire = 
     let wire = Map.find wireId model.Wires
 
@@ -238,7 +238,7 @@ let moveWire (channelOrientation: Orientation) (model: Model) (wireId: Connectio
     [0..(List.length wire.Segments) - 1]
     |> List.zip segmentCoordinates[..(List.length segmentCoordinates)-2]
     |> List.fold (fun wire (segmentCoordinate, index) -> if ((index % 2 = remainder) && (index >= startSegment) && (index <= endSegment)) then (moveSegment2 segmentCoordinate coordinateTarget wire index) else wire) wire
-
+/// makes the necessary wire moves for all wires in the channel
 let moveWires(channelOrientation: Orientation) (model: Model) (wiresToMove: List<WireMovementInfo>) (wireSpacings: List<float>) =
     let modelWires = model.Wires
     let newWires = 
@@ -248,7 +248,7 @@ let moveWires(channelOrientation: Orientation) (model: Model) (wiresToMove: List
         //|> Map.map (fun _ wire -> smartAutoroute model wire)
     {model with Wires = newWires}
 
-
+/// top level channling function
 let smartChannelRoute //spaces wires evenly 
         (channelOrientation: Orientation) 
         (channel: BoundingBox) 
