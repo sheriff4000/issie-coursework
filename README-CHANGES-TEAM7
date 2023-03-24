@@ -8,3 +8,12 @@
 ## SheetUpdate.fs
     * TestSmartChannel altered to check for all channels
     * TestAll button added
+    
+## Symbol.fs
+   * halfPortStep added to Constants module for use in swapPorts function in SmartPortOrder
+
+## BusWire.fs
+   * recursionLimit added to Constants module for use in recursive changeSymbol function in SmartPortOrder
+   
+
+   
