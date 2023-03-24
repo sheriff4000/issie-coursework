@@ -186,7 +186,7 @@ let addFakeSegs (addType: AddSegType) (wire: Wire) (idx: int) (intersect: Inters
     
     {wire with Segments = mappedSegs}, newIdx
 
-
+/// top level autorouting function
 let smartAutoroute (model: Model) (wire: Wire) = 
     let destPos, startPos =
         Symbol.getTwoPortLocations (model.Symbol) (wire.InputPort) (wire.OutputPort)
@@ -218,44 +218,14 @@ let smartAutoroute (model: Model) (wire: Wire) =
 
     /// recursive function to iterate through and handle intersects one at a time
     let rec wireRecursive currWire (intersects: Intersect list) (channelBoundingBoxes: BoundingBox list) = 
-        let segMapUpdate = WireToLineSegs currWire
-    
-
         match intersects with
             | intersect::tl ->
-                // printfn "%A" intersect.intersectType
                 let segIndex = 
                     intersect.Index
                 let dist = LineMove intersect.Box intersect.Line
-
-                // let addType = 
-                //     if not contradiction then
-                //         if (segments[segIndex-1].Mode = Manual && segments[segIndex+1].Mode = Manual) || segments[segIndex].Mode = Manual then
-                //             Both
-                //         elif segments[segIndex-1].Mode = Manual then
-                //             Previous
-                //         elif segments[segIndex+1].Mode = Manual then
-                //             Next
-                //         else Neither
-                //     else
-                //         Both
-                //let longerWire, newSegIdx = addFakeSegs addType currWire segIndex intersect
                 let newWire = 
-                    // if newSegIdx = 0 then 
-                    //     let tmpWire, tmpIdx = addFakeSegs Previous longerWire newSegIdx intersect
-                    //     moveSegment model tmpWire.Segments[tmpIdx] dist //intersect
-                    // elif newSegIdx = longerWire.Segments.Length-1 then
-                    //     let tmpWire, tmpIdx = addFakeSegs Next longerWire newSegIdx intersect
-                    //     moveSegment model tmpWire.Segments[tmpIdx] dist //intersect
-                    // else
-                    //     moveSegment model longerWire.Segments[newSegIdx] dist
 
                     moveSegment model currWire.Segments[segIndex] dist
-                    //find the bounding box we are moving around
-                    //direction the wire is moving to the side of the bounding box
-                    //create a bounding box in on that side
-                    //run smartChannels on this bounding box
-                //let componentboundingBox = Intersect.Box)
                 let directionOfMovement: Edge = 
                     if intersect.IntersectType = Top || intersect.IntersectType = Bottom then
                         if dist > 0 then
