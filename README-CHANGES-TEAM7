@@ -1,5 +1,10 @@
 # Changes
 
-* LineSeg added to CommonTypes - enables the checking of intersections between lines, used for smartAutoRoute and SmartChannel. 
+## CommonTypes.fs
+    * LineSeg added to CommonTypes - enables the checking of intersections between lines, used for smartAutoRoute and SmartChannel. 
 
-*
+    * Members Top, Bottom, Left and Right (LineSegs) added to boundingBox - allows to check whether a wire segment enters a BoundingBox
+
+## SheetUpdate.fs
+    * TestSmartChannel altered to check for all channels
+    * TestAll button added
