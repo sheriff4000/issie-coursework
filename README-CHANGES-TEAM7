@@ -1,0 +1,5 @@
+# Changes
+
+* LineSeg added to CommonTypes - enables the checking of intersections between lines, used for smartAutoRoute and SmartChannel. 
+
+*
