@@ -449,28 +449,6 @@ let isInterconnected (fstWire,sndWire)=
             //printfn $"NOT INTERCONNECTED"
             false
 
- /// HLP23: Sherif
-/// Defines a line segment as two positions
-// type LineSeg = 
-//     {
-//         Start: XYPos
-//         finish: XYPos
-//     }
-//     // since only either horizontal or vertical, can add differences
-//     member this.length = (this.finish.X-this.Start.X) + (this.finish.Y-this.Start.Y)  
-//     member this.orientation = if this.Start.X = this.finish.X then Vertical else Horizontal
-
-/// HLP23: Sherif
-/// defines a bounding box as its set of edges
-// type boxLines =
-//     {
-//         top: LineSeg
-//         bottom: LineSeg
-//         left: LineSeg
-//         right: LineSeg
-//         W: float
-//         H: float
-//     }
 /// HLP23: Sherif
 /// encapsulates all information on an intersection between a wire segment and a component
 type Intersect = {
