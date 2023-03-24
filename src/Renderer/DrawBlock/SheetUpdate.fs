@@ -806,7 +806,7 @@ let update (msg : Msg) (model : Model): Model*Cmd<Msg> =
     | TestSmartChannel ->
         let bBoxes = model.BoundingBoxes
 
-
+        /// returns a bool indicating whether a wire has been autorouted around a component
         let checkAutoRouteBoundingBox (channel: BoundingBox) (side: Edge) : bool =
             //returns bool saying if theres multiple wires being autorouted
             let orientation =
@@ -819,6 +819,7 @@ let update (msg : Msg) (model : Model): Model*Cmd<Msg> =
             let wiresInChannel = 
                 getWiresInChannel orientation channel wireModel
 
+            ///checks gets the entry position of all the straight wires in a channel
             let segmentsInChannel =
                 wiresInChannel
                 |> List.map (fun x -> wireModel.Wires[x.Wire], x.StartSegment, x.EndSegment)
@@ -889,7 +890,7 @@ let update (msg : Msg) (model : Model): Model*Cmd<Msg> =
 
             
         
-
+        ///finds all channels in a sheet, filtering based on heuristics
         let allComponentChannels : (Symbol * Symbol) list = 
             let symbols = model.Wire.Symbol.Symbols
             let symbolList = 
@@ -918,7 +919,7 @@ let update (msg : Msg) (model : Model): Model*Cmd<Msg> =
             |> List.filter (fun ((s1,s2),(size, ratio)) -> ((size > 10) && (size < 400)))
             
             |> List.map (fun ((s1,s2),size) -> (s1,s2))
-                    
+        /// channels wires iteratively, updating the model           
         let channelFolder (currModel : Model) (currChannel: Symbol * Symbol) =
             match currChannel with
             | (s1,s2) -> 

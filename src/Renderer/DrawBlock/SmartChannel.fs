@@ -25,13 +25,13 @@ open SmartWire
 let print x =
     printfn "%A" x
 
-type BoxSides = { 
-//defines the left x coordinate, right x coordinate, top y coordinate, bottom y coordinate of a bounding box.
-        Left: float;
-        Right: float;
-        Top: float;
-        Bottom: float
-    }
+// type BoxSides = { 
+// //defines the left x coordinate, right x coordinate, top y coordinate, bottom y coordinate of a bounding box.
+//         Left: float;
+//         Right: float;
+//         Top: float;
+//         Bottom: float
+//     }
 
 type WireMovementInfo = {
     Wire: ConnectionId;
@@ -65,7 +65,7 @@ let XCoordinateEachSegment (wire: Wire) =
     |> List.scan (fun state (index, segment) -> folder wire.InitialOrientation state index segment) wire.StartPos.X  
 
 
-    
+/// Returns a tuple of int options defining which segments of the wire enter and exit the channel. 
 let getInOutSegments (channelOrientation: Orientation) (channel: BoundingBox) (wire: Wire)  =
         let segMap = WireToLineSegs wire
         //let channelBox = boundingBoxToBoxLines channel
@@ -148,45 +148,9 @@ let getInOutSegments (channelOrientation: Orientation) (channel: BoundingBox) (w
         let tmpIn = if channelOrientation = Horizontal then leftSeg intersectList else topSeg intersectList
         let tmpOut = if channelOrientation = Horizontal then rightSeg intersectList else botSeg intersectList
 
-        let finalIn = 
-            if Option.isSome tmpIn then
-                tmpIn
-            elif (Option.isSome tmpOut) && Option.isNone(tmpIn) then
-                match (wire.InitialOrientation, channelOrientation) with
-                    | (Horizontal, Horizontal) -> Some 2
-                    | (Horizontal, Vertical) -> Some 1
-                    | (Vertical, Horizontal) -> Some 1
-                    | (Vertical, Vertical)  -> Some 2
-                    | _ -> failwithf "shouldn't ever happen"
-            else
-                None
-
-        let finalOut = 
-            if Option.isSome tmpOut then
-                tmpOut
-            elif (Option.isSome tmpIn) && Option.isNone(tmpOut) then
-                let endOrientation = 
-                    let numberOfSegments = (List.length wire.Segments) % 2
-                    match (channelOrientation, numberOfSegments) with
-                        | (Horizontal, 0) -> Vertical
-                        | (Vertical, 0) -> Horizontal
-                        | (Horizontal, 1) -> Horizontal
-                        | (Vertical, 1) -> Vertical
-                        | _ -> failwithf "shouldn't ever happen"
-
-                        
-                match (endOrientation, channelOrientation) with
-                    | (Horizontal, Horizontal) -> Some ((List.length wire.Segments) - 3)
-                    | (Horizontal, Vertical) -> Some ((List.length wire.Segments) - 2)
-                    | (Vertical, Horizontal) -> Some ((List.length wire.Segments) - 2)
-                    | (Vertical, Vertical)  -> Some ((List.length wire.Segments) - 3)
-                    | _ -> failwithf "shouldn't ever happen"
-            else
-                None
-
-
         tmpIn, tmpOut
 
+/// determines which wires are in a given channel
 let getWiresInChannel (channelOrientation: Orientation)(channel: BoundingBox) (model: Model)  = 
     model.Wires
     |> Map.toList
@@ -297,19 +261,5 @@ let smartChannelRoute //spaces wires evenly
     let spacings = getWireSpacings channelOrientation channel wiresInChannel
     let sortedWires = getWireOrder channelOrientation model wiresInChannel
 
-    // print "left of box"
-    // print channel.TopLeft.X
-    // print "right of box"
-    // print (channel.TopLeft.X + channel.W)
-    // print "spacing"
-    // print spacings[0]
     moveWires channelOrientation model sortedWires spacings
-    // let wireInChannel = wiresInChannel[0]
-    // let wireId = wireInChannel.Wire
-    // let wire = Map.find wireId (model.Wires)
-    // print "hi"
-    // let endSegment = wireInChannel.EndSegment
-    // let currentHeights = YCoordinateEachSegment wire
-    // print "here"
-    // let newWire = moveSegment2 currentHeights[endSegment] (currentHeights[endSegment] - 50.0) wire endSegment
-    // {model with Wires = Map.add wireId newWire model.Wires}
+  
